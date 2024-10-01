@@ -1,0 +1,22 @@
+{
+  "name": "test_server_client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.0",
+    "glob": "^11.0.0",
+    "mongoose": "^8.7.0",
+    "nodemon": "^3.1.6",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.5"
+  }
+}
