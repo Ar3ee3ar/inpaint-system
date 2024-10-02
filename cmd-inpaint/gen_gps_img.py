@@ -186,15 +186,17 @@ def find_relate(coor_detail,target_pic,type_coor):
                 # print(coor_detail["y"][target_pic] - range_relate_coor[0][1])
                 # print(coor_detail["y"][target_pic] - range_relate_coor[1][1])
                 if(((left_x_dist< min_x_dist) or (left_y_dist< min_y_dist)) and (np.abs(coor_detail["y"][target_pic] - coor_detail["y"][i]) >= 7)):
-                    min_x_dist = left_x_dist
-                    min_y_dist = left_y_dist
-                    min_pic = i
-                    sum_dist = min_x_dist + min_y_dist
+                    if((left_x_dist + left_y_dist < sum_dist)):
+                        min_x_dist = left_x_dist
+                        min_y_dist = left_y_dist
+                        min_pic = i
+                        sum_dist = min_x_dist + min_y_dist
                 if(((right_x_dist< min_x_dist) or (right_y_dist< min_y_dist)) and (np.abs(coor_detail["y"][target_pic] - coor_detail["y"][i]) >= 7)):
-                    min_x_dist = right_x_dist
-                    min_y_dist = right_y_dist
-                    min_pic = i
-                    sum_dist = min_x_dist + min_y_dist
+                    if(right_x_dist + right_y_dist < sum_dist):
+                        min_x_dist = right_x_dist
+                        min_y_dist = right_y_dist
+                        min_pic = i
+                        sum_dist = min_x_dist + min_y_dist
             # print('min: ',i,' ',min_x_dist,' , ',min_y_dist)
         # elif(((left_x_dist> min_x_dist) and (left_y_dist> min_y_dist)) or ((right_x_dist > min_x_dist) and (right_y_dist > min_y_dist))):
         #     break
