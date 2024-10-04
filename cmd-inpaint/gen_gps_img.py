@@ -20,6 +20,13 @@ from initial_gps import *
 # degree สะพาน (167, 0, -90, 1000, 1000)
 # degree สะพาน (167, 27, -80, 1000, 1000)
 
+def _argparse():
+    # print('parsing args...')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dir", "-main_dir",type=str, default='', help="parent directory that store dataset")
+    arg = parser.parse_args()
+    return arg
+
 def laplacian_matrix(n, m):
     """Generate the Poisson matrix. 
 
@@ -511,7 +518,9 @@ def find_fol(main_input):
     return dir_list_input
 
 def main():
-    main_input = "E:/ProcessMMS/" #NOTE: change man path here
+    # print(_argparse().dir)
+    # main_input = "E:/ProcessMMS/" #NOTE: change man path here
+    main_input = _argparse().dir
     path_input = find_fol(main_input)
     for i in range(len(path_input)):
         line_name = (path_input[i].split('/'))[3]
