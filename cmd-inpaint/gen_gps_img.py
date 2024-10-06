@@ -10,6 +10,7 @@ import scipy.sparse
 from scipy.sparse.linalg import spsolve
 from tqdm import tqdm
 import glob
+from distutils.util import strtobool
 
 # sys.path.append("..")
 
@@ -24,6 +25,7 @@ def _argparse():
     # print('parsing args...')
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", "-main_dir",type=str, default='', help="parent directory that store dataset")
+    parser.add_argument("--overwrite", "-overwrite", type=str, nargs='?', const='True', default="False", help="enable wandb log")
     arg = parser.parse_args()
     return arg
 
@@ -149,6 +151,37 @@ def convert_yaw_to_360(yaw):
     # Ensure yaw is in the range 0 to 360 degrees
     yaw_360 = (yaw + 360) % 360
     return yaw_360
+
+def find_relate_new(coor_detail,target_pic, type_coor):
+    qt = [-12,12]
+    if(type_coor == "latlon"):
+        target_coor = latlon_to_utm([coor_detail["x"][target_pic], coor_detail["y"][target_pic]])
+    else:
+        target_coor = [coor_detail["x"][target_pic], coor_detail["y"][target_pic]]
+    xt, yt = target_coor[0:2]
+    min_x_dist = 9999999
+    min_y_dist = 9999999
+    sum_dist = 9999999
+    min_pic = target_pic
+    for i in range(0,len(coor_detail["x"])):
+        for range_qt in qt:
+            theta = coor_detail["yaw"][i]
+            xq = range_qt*np.sin(np.radians(theta)) + xt
+            yq = range_qt*np.cos(np.radians(theta)) + yt
+            x_dist = np.abs(xq - coor_detail["x"][i])
+            y_dist = np.abs(yq - coor_detail["y"][i])
+            if((x_dist + y_dist < sum_dist)):
+                if((x_dist< min_x_dist) or (y_dist< min_y_dist)):
+                    if((np.abs(coor_detail["x"][target_pic] - coor_detail["x"][i]) >= 8.8) or (np.abs(coor_detail["y"][target_pic] - coor_detail["y"][i]) >= 8.8)):
+                        min_x_dist = x_dist
+                        min_y_dist = y_dist
+                        min_pic = i
+                        sum_dist = min_x_dist + min_y_dist
+    print(target_pic,' => ',min_pic)
+    return min_pic
+
+
+
 
 def find_relate(coor_detail,target_pic,type_coor):
     # (np.abs(coor_detail["y"][target_pic] - coor_detail["y"][i]) >= 7)
@@ -338,7 +371,8 @@ def overlay(main_path,save_path,source_path, target_path,count,coor_detail):
     # print('dist_y : ',coor_detail["y"][source_path] - coor_detail["y"][target_path])
     # print('dist_yaw : ',convert_yaw_to_360(coor_detail["yaw"][source_path]) - convert_yaw_to_360(coor_detail["yaw"][target_path]))
     new_coor =  find_new_coor(dist_utm_x,dist_utm_y,dist_degree)
-    source = cv2.warpAffine(source, np.float32([[1, 0, m_to_px(new_coor[0]-dist_utm_x)], [0, 1, m_to_px(new_coor[1]-dist_utm_y)]]), (2000,2000))
+    shift_coor = m_to_px(new_coor[0]-dist_utm_x, new_coor[1]-dist_utm_y)
+    source = cv2.warpAffine(source, np.float32([[1, 0, shift_coor[0]], [0, 1, shift_coor[1]]]), (2000,2000))
     source = rotate(source,convert_yaw_to_360(coor_detail["yaw"][source_path]) - convert_yaw_to_360(coor_detail["yaw"][target_path]))
     # print('new_coor : ',new_coor[0],' , ',new_coor[1])
     # print("move_coor : ( ",dist_utm_x - new_coor[0]," , ",dist_utm_y - new_coor[1]," )")
@@ -362,9 +396,10 @@ def overlay(main_path,save_path,source_path, target_path,count,coor_detail):
     # result = poisson_edit(source,target, mask/255.0, offset)
     # result = crude_inpaint(source,target,mask_path)
     result = seamless(source,target)
+    cv2.imwrite(save_path + '/'+ "img_"+str(count).rjust(6, '0')+"_O.jpg", result)
     # print('projection')
     # save_path = main_path
-    per_to_equi(save_path, main_path + "img_"+str(target_path).rjust(6, '0')+".jpg",result,count)
+    # per_to_equi(save_path, main_path + "img_"+str(target_path).rjust(6, '0')+".jpg",result,count)
     # resize_target = cv2.resize(result, (512, 512))
     # cv2.imshow("img",resize_target)
     # cv2.waitKey() 
@@ -409,9 +444,10 @@ def find_new_coor(x,y,degree):
     y_new = -x*np.sin(np.radians(degree)) + y*np.cos(np.radians(degree))
     return (x_new,y_new)
 
-def m_to_px(X):
-    Y = ((29.663*X) +2.644 - 1)
-    return Y 
+def m_to_px(X,Y):
+    X_new = ((29.663*X) +2.644 - 1)
+    Y_new = ((19.663*Y) +2.644 - 1)
+    return (X_new, Y_new)
 
 # def move_test(source_path,target_path,source_coor,target_coor):
 #     source = cv2.resize(cv2.imread("D:/new_car_ds/C1/C1_per_1500/"+str(source_path)+"_topview_source.jpg"),(2000,2000))
@@ -472,13 +508,14 @@ def overlay_process(main_path,save_path, coor_detail):
         create_fol(save_path)
     else:
         # create_fol(main_path+'Top')
-        for item in dir_list_input[:]:  # Use a copy of the list
-            pic_full_name = item.split('\\')[-1]
-            pic_name = save_path+'/'+pic_full_name[:-4]+'_O.jpg'
-            # print(pic_name)
-            # break
-            if(os.path.exists(pic_name)):
-                dir_list_input.remove(item)
+        if(not bool(strtobool(_argparse().overwrite))):
+            for item in dir_list_input[:]:  # Use a copy of the list
+                pic_full_name = item.split('\\')[-1]
+                pic_name = save_path+'/'+pic_full_name[:-4]+'_O.jpg'
+                # print(pic_name)
+                # break
+                if(os.path.exists(pic_name)):
+                    dir_list_input.remove(item)
         # print(dir_list_input[0:3])
 
     # print(dir_list_input[0])
@@ -492,7 +529,7 @@ def overlay_process(main_path,save_path, coor_detail):
 
         for coor in tqdm(target):
             # print('-------',coor,'-----------')
-            source_pic = find_relate(coor_detail,coor,"utm")
+            source_pic = find_relate_new(coor_detail,coor,"utm")
             overlay(main_path,save_path,source_pic,coor,str(coor),coor_detail)
             # break
 

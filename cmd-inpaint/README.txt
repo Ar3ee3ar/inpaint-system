@@ -1,5 +1,5 @@
 command ลบรถ
-python gen_gps_img.py --dir (main path => ex. E:/ProcessMMS/)
+python gen_gps_img.py --dir (main path => ex. E:/ProcessMMS/) --overwrite (True | False)
 
 command update code
 git pull
