@@ -1,0 +1,40 @@
+{
+  "kmutnb": {
+    "coor": 0,
+    "mask": "./mask/kmutnb_mask.jpg",
+    "mask_seamless": "./mask/kmutnb_mask.jpg",
+    "img_top_h": 1000,
+    "img_top_w": 1000,
+    "img_pano_h": 4096,
+    "img_pano_w": 8192,
+    "seamless_center_h": 500,
+    "seamless_center_w": 500,
+    "move_img_up": 495,
+    "move_img_down": -495,
+    "x_new_coor": [29.663, 1.6444],
+    "y_new_coor": [29.663, 1.6444],
+    "relate_dist" : [-12,12],
+    "model_input" : [512,512],
+    "model_weight" : "./weight/G.h5",
+    "model_type" : "df"
+  },
+  "hii": {
+    "coor": 27,
+    "mask": "./mask/binary_mask_test.jpg",
+    "mask_seamless": "./mask/8k_focus_simple2.jpg",
+    "img_top_h": 1000,
+    "img_top_w": 1000,
+    "img_pano_h": 4096,
+    "img_pano_w": 8192,
+    "seamless_center_h": 499,
+    "seamless_center_w": 450,
+    "move_img_up": 495,
+    "move_img_down": -495,
+    "x_new_coor": [29.663, 1.6444],
+    "y_new_coor": [29.663, 1.6444],
+    "relate_dist": [-12, 12],
+    "model_input": [512, 512],
+    "model_weight": "./weight/bestG_weight_nakorn.h5",
+    "model_type": "p2p"
+  }
+}

@@ -14,6 +14,7 @@ import {
   Card,
   Space,
 } from "antd";
+import { CarOutlined, HomeOutlined } from "@ant-design/icons";
 
 import api, { getNodeDetail, stopProcess } from '../axios_api';
 // import readFiles from '../tools/read_file';
@@ -30,11 +31,23 @@ var result_detail = {
   status: "",
 };
 
+export const BridgeHeader = () =>{
+  return (
+    <h1 style={{ color: "white", textAlign: "left", margin: 0 }}>
+      <Space>
+        <CarOutlined />
+        Remove car : Bridge
+      </Space>
+    </h1>
+  );
+}
+
 export const Inpaint = () => {
     // const [dataTest, setDataTest] = useState("");
     const [inputPath, setInputPath] = useState("");
     const [outputPath, setOutputPath] = useState("");
     const [resAllResult, setResAllResult] = useState({});
+    const [resFolProgress, setResFolProgress] = useState({});
     const [resNodeName, setResNodeName] = useState([]);
     const [resProgress, setResProgress] = useState([]);
     const [resAllPic, setAllPic] = useState([]);
@@ -100,7 +113,7 @@ export const Inpaint = () => {
       // document.getElementById("demo").innerHTML = "connect: "+myJson.message;
       // setDataTest(myJson.message)
       const body = {"input":inputPath, "save_fol":outputPath};
-      api.createProcessGPS(body);
+      api.createProcessGAN(body);
       // console.log(response)
       // setResApi(response.data.uid);
       // console.log(response.data.uid);
@@ -177,6 +190,7 @@ export const Inpaint = () => {
               );
             }
           }
+          // setResFolProgress(json[Object.keys(json)[0]]);
           setResAllResult(json);
           console.log(resAllResult);
         });
@@ -289,7 +303,7 @@ export const Inpaint = () => {
                   Add node
                 </Button>
                 <Modal
-                  title="Basic Modal"
+                  title="Select client node"
                   open={isModalOpen}
                   onOk={handleOk}
                   onCancel={handleCancel}
@@ -383,6 +397,17 @@ export const Inpaint = () => {
               showInfo={false}
               size={50}
             /> */}
+            {Object.keys(resAllResult).length > 0 && (
+              // Folder progress
+              <Progress
+                percent={Math.floor(
+                  (resAllResult[Object.keys(resAllResult)[0]].num_folder /
+                    resAllResult[Object.keys(resAllResult)[0]].all_folder) *
+                    100
+                )}
+                status={resAllResult[Object.keys(resAllResult)[0]].status === "stop" && "exception"}
+              />
+            )}
             {Object.entries(resAllResult).map(([key, value]) => (
               <div key={key}>
                 <Card

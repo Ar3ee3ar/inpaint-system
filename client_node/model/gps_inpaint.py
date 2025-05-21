@@ -15,7 +15,7 @@ import glob
 
 from .tools.process_img import preprocess_img, crop_center, pad_images_to_same_size, resize
 from .tools.process_pano import Equirectangular,Perspective,inpaint_pano
-from .initial import *
+from .config_gps import *
 
 # degree สะพาน (167, 0, -90, 1000, 1000)
 # degree สะพาน (167, 27, -80, 1000, 1000)

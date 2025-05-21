@@ -35,8 +35,11 @@ var client_detail = {
   all_img: 0,
   status: "",
   process_folder: "",
+  num_folder: 0,
+  all_folder: 0
 };
-var selected_client = {};
+var show_client = {}; // show only jobless client node
+var selected_client = {}; // show client node user select
 // Store pending responses from clients
 let pendingResponses = {};
 
@@ -65,6 +68,8 @@ io.on("connection", async (socket) => {
     all_img: 0,
     status: "",
     process_folder: "",
+    num_folder: 0,
+    all_folder: 0,
   };
 
   // console.log(Object.keys(clients) + " " + (Object.keys(clients).length - 1));
@@ -339,7 +344,6 @@ app.post("/offline-main-gps", async function (req, res) {
       }
       // data_list = [];
       if(data_list.length > 0){
-        io.emit("pre_run", folder_path[fol] + "/");
         // console.log(data_list.at(0));
         // console.log(data_list.at(1));
         // console.log(data_list.length);
@@ -368,40 +372,28 @@ app.post("/offline-main-gps", async function (req, res) {
           for (let i = 0; i < Object.keys(selected_client).length - 1; i++) {
             pic_detail["input"] = data_list.slice(work * i, work * (i + 1));
             pic_detail["status"] = "assign task";
-            selected_client[Object.keys(selected_client)[i]]["all_img"] =
-              work * (i + 1) - work * i;
+            selected_client[Object.keys(selected_client)[i]]["all_img"] = work * (i + 1) - work * i;
             selected_client[Object.keys(selected_client)[i]]["process"] = 0;
-            selected_client[Object.keys(selected_client)[i]]["process_folder"] =
-              folder_path[fol];
+            selected_client[Object.keys(selected_client)[i]]["process_folder"] = folder_path[fol];
+            selected_client[Object.keys(selected_client)[i]]["num_folder"] = fol+1;
+            selected_client[Object.keys(selected_client)[i]]["all_folder"] = folder_path.length;
             client_send_command[Object.keys(selected_client)[i]] = pic_detail;
             // io.to(Object.keys(selected_client)[i]).emit("run", pic_detail);
           }
           // console.log(work + " * " + divide_work);
           pic_detail["input"] = data_list.slice(work * (divide_work - 1));
           pic_detail["status"] = "assign task";
-          selected_client[
-            Object.keys(selected_client)[
-              Object.keys(selected_client).length - 1
-            ]
-          ]["all_img"] = data_list.length - work * (divide_work - 1);
-          selected_client[
-            Object.keys(selected_client)[
-              Object.keys(selected_client).length - 1
-            ]
-          ]["process"] = 0;
-          selected_client[
-            Object.keys(selected_client)[
-              Object.keys(selected_client).length - 1
-            ]
-          ]["process_folder"] = folder_path[fol];
-          client_send_command[
-            Object.keys(selected_client)[
-              Object.keys(selected_client).length - 1
-            ]
-          ] = pic_detail;
+          final_node = Object.keys(selected_client)[Object.keys(selected_client).length - 1]
+          selected_client[final_node]["all_img"] = data_list.length - work * (divide_work - 1);
+          selected_client[final_node]["process"] = 0;
+          selected_client[final_node]["process_folder"] = folder_path[fol];
+          selected_client[final_node]["num_folder"] = fol + 1;
+          selected_client[final_node]["all_folder"] = folder_path.length;
+          client_send_command[final_node] = pic_detail;
           // io.to(Object.keys(selected_client)[Object.keys(selected_client).length - 1]).emit("run", pic_detail);
 
           for (let j = 0; j < Object.keys(selected_client).length; j++) {
+            io.to(Object.keys(selected_client)[j]).emit("pre_run", folder_path[fol] + "/");
             io.to(Object.keys(selected_client)[j]).emit(
               "run",
               client_send_command[Object.keys(selected_client)[j]]
@@ -447,6 +439,296 @@ app.post("/offline-main-gps", async function (req, res) {
   }
 });
 
+app.post("/offline-main-gan", async function (req, res) {
+  for (let i = 0; i < Object.keys(selected_client).length - 1; i++){
+    selected_client[Object.keys(selected_client)[i]]["status"] = "process";
+  }
+  const data = req.body;
+  console.log(data);
+  folder_path = await readFolders(data.input);
+  console.log(folder_path);
+  // folder_path = [folder_path[0]];
+  for (let fol = 0; fol < folder_path.length; fol++) {
+    const responsePromises = []; // Array to hold the promises for each client response
+    console.log(folder_path[fol]);
+    var data_list = await readFiles(folder_path[fol] + "/", "*.jpg");
+    var line_name = folder_path[fol].split("/").at(3);
+    var save_fol =
+      folder_path[fol] + "/" + line_name + "_" + data.save_fol + "/"; // add date to output file name ex. output_01102024
+    // var gps_path = await findGPS(folder_path[fol] + "/");
+    // console.log(folder_path[i] + "/");
+    // console.log(gps_path);
+    if (!fs.existsSync(save_fol)) {
+      var res_createFolder = await createFolder(save_fol);
+      console.log(res_createFolder);
+    } else {
+      for (let pic_path = 0; pic_path < data_list.length; pic_path++) {
+        // console.log(data_list[pic_path]);
+        pic_full_name = data_list[pic_path].split("/").at(-1);
+        // console.log(pic_full_name);
+        pic_name = pic_full_name.slice(0, -4);
+        // console.log(pic_name);
+        // break;
+        if (fs.existsSync(save_fol + pic_name + "_O.jpg")) {
+          data_list.splice(pic_path, 1); // Remove element at index i
+          pic_path--; // Adjust index to account for removed element
+        }
+      }
+    }
+    // data_list = [];
+    if (data_list.length > 0) {
+      // io.emit("pre_run", folder_path[fol] + "/");
+      // console.log(data_list.at(0));
+      // console.log(data_list.at(1));
+      // console.log(data_list.length);
+      var client_send_command = {};
+      var pic_detail = {
+        main_path: folder_path[fol] + "/",
+        input: [],
+        save_fol: save_fol,
+      };
+
+      // var data_list = await readFiles(data.input, "*.jpg");
+      // for (let i = 0; i < data_list.length; i++) {
+      //   pic_detail["input"].push(data_list[i]);
+      //   // await callModel(pic_detail);
+      //   // break;
+      // }
+      // data_list = []
+      // for (let j = 0; j<100; j++){
+      //   data_list.push(j)
+      // }
+      divide_work = Object.keys(selected_client).length;
+      console.log("divide work");
+      if (divide_work > 0) {
+        work = ~~(data_list.length / divide_work);
+        // console.log(Object.keys(clients))
+        for (let i = 0; i < Object.keys(selected_client).length - 1; i++) {
+          // console.log(data_list.slice(work * i, work * (i + 1)));
+          pic_detail["input"] = data_list.slice(work * i, work * (i + 1));
+          pic_detail["status"] = "assign task";
+          selected_client[Object.keys(selected_client)[i]]["all_img"] =
+            work * (i + 1) - work * i;
+          selected_client[Object.keys(selected_client)[i]]["process"] = 0;
+          selected_client[Object.keys(selected_client)[i]]["process_folder"] =
+            folder_path[fol];
+          selected_client[Object.keys(selected_client)[i]]["num_folder"] =
+            fol + 1;
+          selected_client[Object.keys(selected_client)[i]]["all_folder"] =
+            folder_path.length;
+          client_send_command[Object.keys(selected_client)[i]] = {...pic_detail};
+          // console.log(Object.keys(selected_client)[i], " ", pic_detail);
+          // io.to(Object.keys(selected_client)[i]).emit("run", pic_detail);
+        }
+        // console.log(work + " * " + divide_work);
+        pic_detail["input"] = data_list.slice(work * (divide_work - 1));
+        // console.log(data_list.slice(work * (divide_work - 1)));
+        pic_detail["status"] = "assign task";
+        final_node =
+          Object.keys(selected_client)[
+            Object.keys(selected_client).length - 1
+          ];
+        selected_client[final_node]["all_img"] =
+          data_list.length - work * (divide_work - 1);
+        selected_client[final_node]["process"] = 0;
+        selected_client[final_node]["process_folder"] = folder_path[fol];
+        selected_client[final_node]["num_folder"] = fol + 1;
+        selected_client[final_node]["all_folder"] = folder_path.length;
+        client_send_command[final_node] = {...pic_detail};
+        // console.log(final_node, " ", pic_detail);
+        // io.to(Object.keys(selected_client)[Object.keys(selected_client).length - 1]).emit("run", pic_detail);
+        // console.log(client_send_command);
+
+        for (let j = 0; j < Object.keys(selected_client).length; j++) {
+          // io.to(Object.keys(selected_client)[j]).emit("pre_run", folder_path[fol] + "/");
+          io.to(Object.keys(selected_client)[j]).emit(
+            "run_model",
+            client_send_command[Object.keys(selected_client)[j]]
+          );
+          // Step 2: Prepare to wait for the response from this client
+          const responsePromise = waitForClientResponse(
+            Object.keys(selected_client)[j]
+          );
+          responsePromises.push(responsePromise); // Collect the promise
+        }
+        // res.send(selected_client);
+
+        // Step 3: Wait for all clients to respond
+        const allResponses = await Promise.all(responsePromises);
+        console.log("Received all responses:", allResponses);
+        // res.send(selected_client);
+
+        console.log(
+          "Received responses from " + (fol + 1) + " command:",
+          folder_path[fol]
+        );
+      } else {
+        // for (let i = 0; i < Object.keys(clients).length - 1; i++){
+        //   pic_detail["status"] = "assign task";
+        // }
+        res.send("not have node in system");
+      }
+    } else {
+      console.log("already process", folder_path[fol]);
+      for (let k = 0; k < Object.keys(selected_client).length; k++) {
+        selected_client[Object.keys(selected_client)[k]]["status"] = "wait";
+      }
+    }
+    // await setTimeout(50000);
+    await io.on("finish", () => {
+      console.log("already finish");
+    });
+  }
+  for (let k = 0; k < Object.keys(selected_client).length; k++) {
+    selected_client[Object.keys(selected_client)[k]]["status"] = "complete";
+  }
+});
+
+app.post("/offline-main-gan-nakorn", async function (req, res) {
+  for (let i = 0; i < Object.keys(selected_client).length - 1; i++) {
+    selected_client[Object.keys(selected_client)[i]]["status"] = "process";
+  }
+  const data = req.body;
+  console.log(data);
+  folder_path = await readFolders(data.input);
+  console.log(folder_path);
+  // folder_path = [folder_path[0]];
+  for (let fol = 0; fol < folder_path.length; fol++) {
+    const responsePromises = []; // Array to hold the promises for each client response
+    console.log(folder_path[fol]);
+    var data_list = await readFiles(folder_path[fol] + "/", "*.jpg");
+    var line_name = folder_path[fol].split("/").at(3);
+    var save_fol =
+      folder_path[fol] + "/" + line_name + "_" + data.save_fol + "/"; // add date to output file name ex. output_01102024
+    // var gps_path = await findGPS(folder_path[fol] + "/");
+    // console.log(folder_path[i] + "/");
+    // console.log(gps_path);
+    if (!fs.existsSync(save_fol)) {
+      var res_createFolder = await createFolder(save_fol);
+      console.log(res_createFolder);
+    } else {
+      for (let pic_path = 0; pic_path < data_list.length; pic_path++) {
+        // console.log(data_list[pic_path]);
+        pic_full_name = data_list[pic_path].split("/").at(-1);
+        // console.log(pic_full_name);
+        pic_name = pic_full_name.slice(0, -4);
+        // console.log(pic_name);
+        // break;
+        if (fs.existsSync(save_fol + pic_name + "_O.jpg")) {
+          data_list.splice(pic_path, 1); // Remove element at index i
+          pic_path--; // Adjust index to account for removed element
+        }
+      }
+    }
+    // data_list = [];
+    if (data_list.length > 0) {
+      // io.emit("pre_run", folder_path[fol] + "/");
+      // console.log(data_list.at(0));
+      // console.log(data_list.at(1));
+      // console.log(data_list.length);
+      var client_send_command = {};
+      var pic_detail = {
+        main_path: folder_path[fol] + "/",
+        input: [],
+        save_fol: save_fol,
+      };
+
+      // var data_list = await readFiles(data.input, "*.jpg");
+      // for (let i = 0; i < data_list.length; i++) {
+      //   pic_detail["input"].push(data_list[i]);
+      //   // await callModel(pic_detail);
+      //   // break;
+      // }
+      // data_list = []
+      // for (let j = 0; j<100; j++){
+      //   data_list.push(j)
+      // }
+      divide_work = Object.keys(selected_client).length;
+      console.log("divide work");
+      if (divide_work > 0) {
+        work = ~~(data_list.length / divide_work);
+        // console.log(Object.keys(clients))
+        for (let i = 0; i < Object.keys(selected_client).length - 1; i++) {
+          // console.log(data_list.slice(work * i, work * (i + 1)));
+          pic_detail["input"] = data_list.slice(work * i, work * (i + 1));
+          pic_detail["status"] = "assign task";
+          selected_client[Object.keys(selected_client)[i]]["all_img"] =
+            work * (i + 1) - work * i;
+          selected_client[Object.keys(selected_client)[i]]["process"] = 0;
+          selected_client[Object.keys(selected_client)[i]]["process_folder"] =
+            folder_path[fol];
+          selected_client[Object.keys(selected_client)[i]]["num_folder"] =
+            fol + 1;
+          selected_client[Object.keys(selected_client)[i]]["all_folder"] =
+            folder_path.length;
+          client_send_command[Object.keys(selected_client)[i]] = {
+            ...pic_detail,
+          };
+          // console.log(Object.keys(selected_client)[i], " ", pic_detail);
+          // io.to(Object.keys(selected_client)[i]).emit("run", pic_detail);
+        }
+        // console.log(work + " * " + divide_work);
+        pic_detail["input"] = data_list.slice(work * (divide_work - 1));
+        // console.log(data_list.slice(work * (divide_work - 1)));
+        pic_detail["status"] = "assign task";
+        final_node =
+          Object.keys(selected_client)[Object.keys(selected_client).length - 1];
+        selected_client[final_node]["all_img"] =
+          data_list.length - work * (divide_work - 1);
+        selected_client[final_node]["process"] = 0;
+        selected_client[final_node]["process_folder"] = folder_path[fol];
+        selected_client[final_node]["num_folder"] = fol + 1;
+        selected_client[final_node]["all_folder"] = folder_path.length;
+        client_send_command[final_node] = { ...pic_detail };
+        // console.log(final_node, " ", pic_detail);
+        // io.to(Object.keys(selected_client)[Object.keys(selected_client).length - 1]).emit("run", pic_detail);
+        // console.log(client_send_command);
+
+        for (let j = 0; j < Object.keys(selected_client).length; j++) {
+          // io.to(Object.keys(selected_client)[j]).emit("pre_run", folder_path[fol] + "/");
+          io.to(Object.keys(selected_client)[j]).emit(
+            "run_model_nakorn",
+            client_send_command[Object.keys(selected_client)[j]]
+          );
+          // Step 2: Prepare to wait for the response from this client
+          const responsePromise = waitForClientResponse(
+            Object.keys(selected_client)[j]
+          );
+          responsePromises.push(responsePromise); // Collect the promise
+        }
+        // res.send(selected_client);
+
+        // Step 3: Wait for all clients to respond
+        const allResponses = await Promise.all(responsePromises);
+        console.log("Received all responses:", allResponses);
+        // res.send(selected_client);
+
+        console.log(
+          "Received responses from " + (fol + 1) + " command:",
+          folder_path[fol]
+        );
+      } else {
+        // for (let i = 0; i < Object.keys(clients).length - 1; i++){
+        //   pic_detail["status"] = "assign task";
+        // }
+        res.send("not have node in system");
+      }
+    } else {
+      console.log("already process", folder_path[fol]);
+      for (let k = 0; k < Object.keys(selected_client).length; k++) {
+        selected_client[Object.keys(selected_client)[k]]["status"] = "wait";
+      }
+    }
+    // await setTimeout(50000);
+    await io.on("finish", () => {
+      console.log("already finish");
+    });
+  }
+  for (let k = 0; k < Object.keys(selected_client).length; k++) {
+    selected_client[Object.keys(selected_client)[k]]["status"] = "complete";
+  }
+});
+
 app.post("/offline-folder-gps", async function (req, res) {
   const data = req.body;
   io.emit("pre_run", data.input);
@@ -479,7 +761,7 @@ app.post("/offline-folder-gps", async function (req, res) {
       pic_detail["status"] = "assign task";
       selected_client[Object.keys(selected_client)[i]]["all_img"] = work * (i + 1) - work * i;
       selected_client[Object.keys(selected_client)[i]]["process"] = 0;
-      io.to(Object.keys(selected_client)[i]).emit("run", pic_detail);
+      io.to(Object.keys(selected_client)[i]).emit("run_model", pic_detail);
     }
     // console.log(work + " * " + divide_work);
     pic_detail["input"] = data_list.slice(work * (divide_work - 1));
@@ -489,7 +771,7 @@ app.post("/offline-folder-gps", async function (req, res) {
     selected_client[Object.keys(selected_client)[Object.keys(selected_client).length - 1]]["process"] = 0;
     io.to(
       Object.keys(selected_client)[Object.keys(selected_client).length - 1]
-    ).emit("run", pic_detail);
+    ).emit("run_model", pic_detail);
     res.send(selected_client);
   }
   else{
@@ -501,7 +783,19 @@ app.post("/offline-folder-gps", async function (req, res) {
 });
 
 app.get("/node_detail", async function (req, res) {
-  res.send(clients);
+  show_client = {};
+  for(let i = 0; i < Object.keys(clients).length; i++){
+    console.log(clients[Object.keys(clients)[i]]["status"]);
+    if (
+      clients[Object.keys(clients)[i]]["status"] !== "running" &&
+      clients[Object.keys(clients)[i]]["status"] !== "process" &&
+      clients[Object.keys(clients)[i]]["status"] !== "assign task"
+    ) {
+      console.log(clients[Object.keys(clients)[i]]);
+      show_client[Object.keys(clients)[i]] = clients[Object.keys(clients)[i]];
+    }
+  }
+  res.send(show_client);
 });
 
 app.get("/task", async function (req, res) {
@@ -510,6 +804,9 @@ app.get("/task", async function (req, res) {
 
 app.get("/stop_all", async function (req, res) {
   io.emit("stop_process");
+  for (let k = 0; k < Object.keys(selected_client).length; k++) {
+    selected_client[Object.keys(selected_client)[k]]["status"] = "stop";
+  }
   res.send("stop_all")
 });
 
@@ -523,7 +820,7 @@ app.post("/want_node", async function (req, res) {
     // clients[key].status = "process";
     node_name = clients[Object.keys(clients)[i]]["node_name"]
     if(data.includes(node_name)){
-      clients[Object.keys(clients)[i]].status = "process";
+      clients[Object.keys(clients)[i]].status = "select";
       selected_client[Object.keys(clients)[i]] = clients[Object.keys(clients)[i]]
     }
     else{

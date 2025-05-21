@@ -1,3 +1,10 @@
 web-inpaint/node_modules
-client_node/venv
+**/venv
+**/weight
+**/dist
+**/build
 api/node_modules
+cmd-inpaint/output*.txt
+**/__pycache__
+**/*.spec
+**/mask

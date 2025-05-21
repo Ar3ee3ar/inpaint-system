@@ -1,0 +1,32 @@
+{
+  "kmutnb": {
+    "coor": 0,
+    "mask": "mask/move_8k_focus_simple2_2000.jpg",
+    "img_top_h": 2000,
+    "img_top_w": 2000,
+    "img_pano_h": 4096,
+    "img_pano_w": 8192,
+    "seamless_center_h": 1000,
+    "seamless_center_w": 1000,
+    "move_img_up": 495,
+    "move_img_down": -495,
+    "x_new_coor": [29.663, 1.6444],
+    "y_new_coor": [29.663, 1.6444],
+    "relate_dist" : [-12,12]
+  },
+  "hii": {
+    "coor": 27,
+    "mask": "mask/8k_focus_simple2.jpg",
+    "img_top_h": 2000,
+    "img_top_w": 2000,
+    "img_pano_h": 4096,
+    "img_pano_w": 8192,
+    "seamless_center_h": 1002,
+    "seamless_center_w": 901,
+    "move_img_up": 495,
+    "move_img_down": -495,
+    "x_new_coor": [29.663, 1.6444],
+    "y_new_coor": [29.663, 1.6444],
+    "relate_dist": [-12, 12]
+  }
+}

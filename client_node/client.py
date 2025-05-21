@@ -2,6 +2,8 @@ import asyncio
 import socketio
 import time
 from model.gps_inpaint import *
+from model.gan_inpaint import *
+from model.gan_inpaint_nakorn import *
 
 sio = socketio.AsyncClient()
 
@@ -97,6 +99,86 @@ async def process(data):
             await sio.sleep(1)  # Use sio.sleep to avoid blocking the event loop
         else:
             break
+    print(running)
+    if(running):
+        await sio.emit('run_progress', 'wait')
+        await sio.emit('clientResponse','finish')
+    else:
+        await sio.emit('run_progress', 'stop')
+
+@sio.on('run_model')
+async def process(data):
+    global running
+    running = True
+
+    dir_list_input = data["input"]
+    main_path = data["main_path"]
+    save_path = data["save_fol"]
+    target = []
+    # source = []
+    # create_fol(main_path+'output')
+    # create_fol(main_path+'Top')
+    # dir_list_input = glob.glob(main_path+'*'+'.jpg')
+    print(dir_list_input[0:3])
+    for i in range(len(dir_list_input)):
+        name_file = (dir_list_input[i].split('/'))[-1]
+        num_file = ((name_file.split('_'))[2])[:-4]
+        target.append(int(num_file))
+        # break
+
+    # print(type(target[0]),' ',target[0])
+    await sio.emit('run_progress', 'running')
+    for i,coor in enumerate(target):
+        if(running):
+            # time.sleep(5)
+            print('-------',coor,'-------')
+            # main_gps(main_path,save_path,coor)
+            main_gan_bridge(main_path,save_path,coor)
+            await sio.emit('run_progress', i+1)
+            await sio.sleep(1)  # Use sio.sleep to avoid blocking the event loop
+        else:
+            break
+        # break
+    print(running)
+    if(running):
+        await sio.emit('run_progress', 'wait')
+        await sio.emit('clientResponse','finish')
+    else:
+        await sio.emit('run_progress', 'stop')
+
+@sio.on('run_model_nakorn')
+async def process(data):
+    global running
+    running = True
+
+    dir_list_input = data["input"]
+    main_path = data["main_path"]
+    save_path = data["save_fol"]
+    target = []
+    # source = []
+    # create_fol(main_path+'output')
+    # create_fol(main_path+'Top')
+    # dir_list_input = glob.glob(main_path+'*'+'.jpg')
+    print(dir_list_input[0:3])
+    for i in range(len(dir_list_input)):
+        name_file = (dir_list_input[i].split('/'))[-1]
+        num_file = ((name_file.split('_'))[1])[:-4]
+        target.append(int(num_file))
+        # break
+
+    # print(type(target[0]),' ',target[0])
+    await sio.emit('run_progress', 'running')
+    for i,coor in enumerate(target):
+        if(running):
+            # time.sleep(5)
+            print('-------',coor,'-------')
+            # main_gps(main_path,save_path,coor)
+            main_gan_nakorn(main_path,save_path,coor)
+            await sio.emit('run_progress', i+1)
+            await sio.sleep(1)  # Use sio.sleep to avoid blocking the event loop
+        else:
+            break
+        # break
     print(running)
     if(running):
         await sio.emit('run_progress', 'wait')

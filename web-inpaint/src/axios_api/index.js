@@ -6,6 +6,8 @@ const api = axios.create({
 
 // export const createProcess = body => api.post(`/offline-folder`,body);
 export const createProcessGPS = (body) => api.post(`/offline-main-gps`, body);
+export const createProcessGAN = (body) => api.post(`/offline-main-gan`, body);
+export const createProcessGANnakorn = (body) => api.post(`/offline-main-gan-nakorn`, body);
 export const stopProcess = () => api.get(`/stop_all`);
 export const getNodeDetail = () => api.get(`/node_detail`);
 export const setNode = (body) => api.post(`/want_node`, body);
@@ -20,7 +22,9 @@ export const setNode = (body) => api.post(`/want_node`, body);
 
 const apis = {
   // createProcess,
+  createProcessGAN,
   createProcessGPS,
+  createProcessGANnakorn,
   stopProcess,
   getNodeDetail,
   setNode,
