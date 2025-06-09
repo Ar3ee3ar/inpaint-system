@@ -1,0 +1,65 @@
+pipeline {
+    agent {
+        label 'windows'  // Ensure it runs on a Windows agent
+    }
+
+    environment {
+        PYTHON = 'D:\\test_server_client\\cmd-inpaint\\venv\\Scripts\\python.exe'
+        PIP = 'D:\\test_server_client\\cmd-inpaint\\venv\\Scripts\\pip.exe'
+        ISCC = 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Ar3ee3ar/inpaint-system/tree/test-cicd'
+            }
+        }
+
+        stage('Copy Model Weights') {
+            steps {
+                echo 'Copying model weights to workspace...'
+                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\bestG_weight_nakorn.h5 weight\\bestG_weight_nakorn.h5'
+                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\G.h5 weight\\G.h5'
+                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight_sam\\bestG_weight_nakorn.h5 weight_sam\\bestG_weight_nakorn.h5'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                bat "${env.PIP} install -r requirements_gan.txt"
+                bat "${env.PIP} install pyinstaller"
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                bat "${env.PYTHON} -m unittest discover tests"
+            }
+        }
+
+        stage('Build EXE with PyInstaller') {
+            steps {
+                bat '${env.PYTHON} -m PyInstaller -F -i "icon.ico" --add-data "mask/*;mask" --add-data "flow.png;." --add-data "icon.ico;." --add-data "weight/G.h5;weight" --add-data "weight/bestG_weight_nakorn.h5;weight"  inpaint_1-3.py -F -i "icon.ico" --onefile'
+            }
+        }
+
+        stage('Create Installer with Inno Setup') {
+            steps {
+                bat "\"${env.ISCC}\" inno_setup\installer_script.iss"
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: 'dist/*.exe, Output/*.exe', fingerprint: true
+            }
+        }
+
+        stage('Deploy or Notify') {
+            steps {
+                echo 'Deploy or send notification here'
+            }
+        }
+    }
+}

@@ -1,6 +1,7 @@
 web-inpaint/node_modules
 **/venv
 **/weight
+**/weight_sam
 **/dist
 **/build
 api/node_modules
@@ -8,3 +9,7 @@ cmd-inpaint/output*.txt
 **/__pycache__
 **/*.spec
 **/mask
+**/eggs/
+**/.eggs/
+**/*.egg-info/
+**/gfpgan/
