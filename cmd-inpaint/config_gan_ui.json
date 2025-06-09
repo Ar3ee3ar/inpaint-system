@@ -16,7 +16,21 @@
     "relate_dist" : [-12,12],
     "model_input" : [512,512],
     "model_weight" : "./weight/G.h5",
-    "model_type" : "df"
+    "model_type" : "df",
+    "inpaint_side":{
+      "top_car": true,
+      "cube_left": false,
+      "cube_right": false,
+      "cube_front": false,
+      "cube_back": false
+    },
+    "object_box" :{
+      "top_car" :[],
+      "cube_left": [],
+      "cube_right": [],
+      "cube_front":[],
+      "cube_back":[]
+    }
   },
   "hii": {
     "coor": 27,
@@ -34,7 +48,21 @@
     "y_new_coor": [29.663, 1.6444],
     "relate_dist": [-12, 12],
     "model_input": [512, 512],
-    "model_weight": "./weight/bestG_weight_nakorn.h5",
-    "model_type": "p2p"
+    "model_weight": "./weight/G_1.h5",
+    "model_type": "df",
+    "inpaint_side": {
+      "top_car": true,
+      "cube_left": false,
+      "cube_right": false,
+      "cube_front": false,
+      "cube_back": false
+    },
+    "object_box": {
+      "top_car": [],
+      "cube_left": [],
+      "cube_right": [],
+      "cube_front": [],
+      "cube_back": []
+    }
   }
 }

@@ -22,8 +22,8 @@ scikit-learn==1.3.2
 tqdm==4.66.1
 
 #segmentation part
-# ultralytics==8.1.14 
-# segment-anything==1.0
+ultralytics==8.1.14 
+segment-anything==1.0
 
 # config file
 python-box==7.1.1
