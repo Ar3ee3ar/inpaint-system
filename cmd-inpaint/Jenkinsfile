@@ -21,7 +21,7 @@ pipeline {
                 echo 'Copying model weights to workspace...'
                 bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\bestG_weight_nakorn.h5 weight\\bestG_weight_nakorn.h5'
                 bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\G.h5 weight\\G.h5'
-                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight_sam\\bestG_weight_nakorn.h5 weight_sam\\bestG_weight_nakorn.h5'
+                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight_sam\\sam_vit_l_0b3195.pth weight_sam\\sam_vit_l_0b3195.pth'
             }
         }
 
@@ -46,7 +46,7 @@ pipeline {
 
         stage('Create Installer with Inno Setup') {
             steps {
-                bat "\"${env.ISCC}\" inno_setup\installer_script.iss"
+                bat "\"${env.ISCC}\" inno_setup\\inno_ui_json_gan_1-3.iss"
             }
         }
 
