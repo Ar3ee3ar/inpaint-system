@@ -10,11 +10,12 @@ from .segment_anything import SamPredictor, sam_model_registry, SamAutomaticMask
 import torch
 import time
 
-print(os.getcwd())
+# print(os.getcwd())
 
-sam = sam_model_registry["vit_l"](checkpoint="weight_sam/sam_vit_l_0b3195.pth").to(device=torch.device('cpu'))
+# sam = sam_model_registry["vit_l"](checkpoint="weight_sam/sam_vit_l_0b3195.pth").to(device=torch.device('cpu'))
+# yolo_model = YOLO("yolov8n.pt")
 
-def obj_detect(img):
+def obj_detect(img,model):
     model = YOLO("yolov8n.pt")
     start_box = time.time()
     results = model.predict(source=img, conf=0.25)
@@ -33,12 +34,12 @@ def obj_detect(img):
     return predicted_boxes
     
 
-def bbox(img_type, img, xy_box):
+def bbox(img_type, img, xy_box,model):
     main_dir = "D:/inpaint_gan/"
     count_num = 12
     # model = YOLO("yolov8n.pt")
     # load the SAM model
-
+    sam = model
     mask_predictor = SamPredictor(sam)
 
     if(img_type == 'per'):
@@ -249,7 +250,7 @@ def bbox(img_type, img, xy_box):
 # image_rgb = cv2.cvtColor(img_ori, cv2.COLOR_BGR2RGB)
 # # read in the image for visualization
 # # image_bgr = cv2.imread(img_path, cv2.IMREAD_COLOR)
-# predict_box = obj_detect(img_ori)
+# predict_box = obj_detect(img_ori, yolo_model)
 # final_mask = bbox("per", img_ori, xy_box)
 # plt.figure(figsize=(10, 10))
 # plt.imshow(image_rgb)
