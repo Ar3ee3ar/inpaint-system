@@ -4,24 +4,33 @@ pipeline {
     }
 
     environment {
-        PYTHON = 'D:\\test_server_client\\cmd-inpaint\\venv\\Scripts\\python.exe'
-        PIP = 'D:\\test_server_client\\cmd-inpaint\\venv\\Scripts\\pip.exe'
-        ISCC = 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe'
+        PYTHON = credentials('jenkins-for-python') // Jenkins credential ID
+        PIP = credentials('jenkins-for-pip') // Jenkins credential ID
+        ISCC = credentials('jenkins-for-inno') // Jenkins credential ID
+        MAIN_PATH = credentials('jenkins-for-weight') // Jenkins credential ID
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Ar3ee3ar/inpaint-system/tree/test-cicd'
+                git 'https://github.com/Ar3ee3ar/inpaint-system.git'
+            }
+        }
+
+        stage('Use Files') {
+            steps {
+                bat 'dir cmd-inpaint\\'
             }
         }
 
         stage('Copy Model Weights') {
             steps {
                 echo 'Copying model weights to workspace...'
-                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\bestG_weight_nakorn.h5 weight\\bestG_weight_nakorn.h5'
-                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight\\G.h5 weight\\G.h5'
-                bat 'copy D:\\test_server_client\\cmd-inpaint\\weight_sam\\sam_vit_l_0b3195.pth weight_sam\\sam_vit_l_0b3195.pth'
+                bat 'mkdir weight'
+                bat 'mkdir weight_sam'
+                bat "copy ${env.MAIN_PATH}weight\\bestG_weight_nakorn.h5 weight\\bestG_weight_nakorn.h5"
+                bat "copy ${env.MAIN_PATH}weight\\G.h5 weight\\G.h5"
+                bat "copy ${env.MAIN_PATH}weight_sam\\sam_vit_l_0b3195.pth weight_sam\\sam_vit_l_0b3195.pth"
             }
         }
 
@@ -40,13 +49,13 @@ pipeline {
 
         stage('Build EXE with PyInstaller') {
             steps {
-                bat '${env.PYTHON} -m PyInstaller -F -i "icon.ico" --add-data "mask/*;mask" --add-data "flow.png;." --add-data "icon.ico;." --add-data "weight/G.h5;weight" --add-data "weight/bestG_weight_nakorn.h5;weight"  inpaint_1-3.py -F -i "icon.ico" --onefile'
+                bat "${env.PYTHON} -m PyInstaller -F -i 'icon.ico' --add-data 'mask/*;mask' --add-data 'flow.png;.' --add-data 'icon.ico;.' --add-data 'weight/G.h5;weight' --add-data 'weight/bestG_weight_nakorn.h5;weight'  inpaint_1-3.py -F -i 'icon.ico' --onefile"
             }
         }
 
         stage('Create Installer with Inno Setup') {
             steps {
-                bat "\"${env.ISCC}\" inno_setup\\inno_ui_json_gan_1-3.iss"
+                bat "\"${env.ISCC}\" ${env.MAIN_PATH}inno_setup\\inno_ui_json_gan_1-3.iss"
             }
         }
 

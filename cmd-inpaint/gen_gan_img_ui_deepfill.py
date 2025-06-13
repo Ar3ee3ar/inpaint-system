@@ -13,14 +13,14 @@ from scipy.sparse.linalg import spsolve
 from tqdm import tqdm
 import glob
 from distutils.util import strtobool
-from dataset import Dataset, createAugment
+from tools.dataset import Dataset, createAugment
 # pix2pix
-from pix2pix import Generator as p2pG
-from pix2pix import Discriminator as p2pD
+from tools.pix2pix import Generator as p2pG
+from tools.pix2pix import Discriminator as p2pD
 # deepfill
-from deepfill.inpaint_model import InpaintGenerator
+from tools.deepfill.inpaint_model import InpaintGenerator
 from PIL import Image
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import torch
 # import yaml
 # tool
@@ -29,6 +29,8 @@ from tools.process_pano import Equirectangular,Perspective,inpaint_pano
 from tools.sam_tools.segment_anything import sam_model_registry
 from tools.sam_tools.classification_torch import bbox
 from tools.py360convert.py360convert import c2e, e2c
+# upscale Real ESRGAN
+# from Real_ESRGAN.inference_realesrgan_func import main_upscale
 # from initial_gps import *
 import os
 import sys
@@ -127,6 +129,19 @@ def binary_change(mask,save_path=''):
     # plt.show()
     return binary_mask
 
+def up_downscale(img,img_size,type_scale,type_process='resize'):
+    if(type_process=='pad_image'):
+        if(type_scale == 'upscale'):
+            result_img = pad_images_to_same_size(img,img_size[0],img_size[1])
+        elif(type_scale == 'downscale'):
+            result_img = crop_center(img,img_size) # resize to 290,190
+    elif(type_process=='resize'):
+        if(type_scale == 'upscale'):
+            # result_img = main_upscale(img)
+            result_img = cv2.resize(img,img_size)
+        elif(type_scale == 'downscale'):
+            result_img = cv2.resize(img,img_size)
+    return(result_img)
 # ----------------- initial model setting ---------------
 def load_model_generator(model_type,model_input_2d,model_weight):
     print('start inpainting model')
@@ -164,7 +179,7 @@ def load_model_segment():
 # ------------------- overlay function -------------------------
 
 class OverlayGAN():
-    def __init__(self, config_data, config_name):
+    def __init__(self, config_data, config_name, type_process_scale = 'resize'):
         print('Start read '+config_name+' config...')
         self.config_data = config_data
         self.coor = config_data["coor"]
@@ -183,7 +198,7 @@ class OverlayGAN():
         self.model_input = config_data["model_input"]
         self.model_type = config_data["model_type"]
         self.model_weight = config_data["model_weight"]
-
+        self.type_process_scale = type_process_scale
         # ------- mask value -----------------------
         self.mask_img = None
         self.in_mask = None
@@ -194,7 +209,6 @@ class OverlayGAN():
 
         # self.model_type = None
         self.generator = None
-        self.segment_model = None
         self.set_useMask()
         
         # # initial generator model
@@ -229,10 +243,6 @@ class OverlayGAN():
         self.generator = generator
         print('superclass: ',self.generator)
 
-    def set_model_segment(self,segment_model):
-        self.segment_model = segment_model
-        
-
     def set_segMask(self,seg_mask):
         mask = np.array(seg_mask) # grayscale to ensure image is binary
         mask_ori = binary_change(mask[:])
@@ -242,7 +252,8 @@ class OverlayGAN():
         # plt.imshow(mask_ori)
         # plt.show()
         print('mask bitwise')
-        pad_mask = pad_images_to_same_size(mask_ori/255.0)
+        # pad_mask = pad_images_to_same_size(mask_ori/255.0) # pad maske (upscale) to match original input size
+        pad_mask = up_downscale(mask_ori/255.0,(self.img_top_w,self.img_top_h),'upscale',self.type_process_scale) # resize (upscale) mask to original input size
         self.mask_img = pad_mask
         self.mask_img_seamless = (pad_mask[:]*255.0).astype(np.uint8)
         # plt.imshow(cv2.resize(np.array(pad_mask),(512,512)))
@@ -270,7 +281,8 @@ class OverlayGAN():
         mask_img = cv2.resize(cv2.imread(get_file_path(self.mask)),(self.img_top_h,self.img_top_w)) # for model
         mask_img = np.where(mask_img > 127, 255, 0).astype(np.uint8)
         self.mask_img = mask_img # read from full top mask img
-        mask_img_crop = crop_center(mask_img,(self.model_input[0],self.model_input[1])) # resize to 290,190
+        # mask_img_crop = crop_center(mask_img,(self.model_input[0],self.model_input[1])) # crop (downscale) to match model input size
+        mask_img_crop = up_downscale(mask_img,(self.model_input[0],self.model_input[1]),'downscale',self.type_process_scale) # resize (downscale) to match model input size
         mask_img = preprocess_img(mask_img_crop,img_size=(self.model_input[0],self.model_input[1]))
         mask_bw = cv2.bitwise_not(mask_img) # for only u-net
         self.in_mask = mask_bw.astype('float32') # crop to model input
@@ -306,23 +318,23 @@ class OverlayGAN():
         # (h, w) = (self.seamless_center_h, self.seamless_center_w)
         # center = (h,w)
         # center = (1002,901)
-        plt.imshow(np.array(source))
-        plt.show()
-        a = Image.fromarray(source.astype(np.uint8))
-        a.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_source.jpg")
-        plt.imshow(np.array(target))
-        plt.show()
-        b = Image.fromarray(((target)).astype(np.uint8))
-        b.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_target.jpg")
-        plt.imshow(np.array(mask))
-        plt.show()
-        c = Image.fromarray(((mask)).astype(np.uint8))
-        c.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_mask_seam.jpg")
+        # plt.imshow(np.array(source))
+        # plt.show()
+        # a = Image.fromarray(source.astype(np.uint8))
+        # a.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_source.jpg")
+        # plt.imshow(np.array(target))
+        # plt.show()
+        # b = Image.fromarray(((target)).astype(np.uint8))
+        # b.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_target.jpg")
+        # plt.imshow(np.array(mask))
+        # plt.show()
+        # c = Image.fromarray(((mask)).astype(np.uint8))
+        # c.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_mask_seam.jpg")
         im_clone = cv2.seamlessClone(source, target, mask, center, cv2.NORMAL_CLONE)
-        d = Image.fromarray(((im_clone)).astype(np.uint8))
-        d.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_out_seam.jpg")
-        plt.imshow(np.array(im_clone))
-        plt.show()
+        # d = Image.fromarray(((im_clone)).astype(np.uint8))
+        # d.save("D:/KMUTNB/KMUTNB/test_pic/old/Camera/old_output" + '/'+ "img_"+str(0).rjust(6, '0')+"_out_seam.jpg")
+        # plt.imshow(np.array(im_clone))
+        # plt.show()
         return im_clone
 
     # def save_per(self,img_path,save_path,count):
@@ -389,7 +401,8 @@ class OverlayGAN():
         # print('proj: ',end_proj - start_proj)
 
         # car image
-        per_img = crop_center(per_img_1000,(self.model_input[0],self.model_input[1])) # resize to 290,190
+        # per_img = crop_center(per_img_1000,(self.model_input[0],self.model_input[1])) # crop image (downscale) to match model input size
+        per_img = up_downscale(per_img_1000,(self.model_input[0], self.model_input[1]),'downscale',self.type_process_scale) # resize (downscale) to match model input size
         car_img_top = preprocess_img(per_img,img_size=(self.model_input[0],self.model_input[1])) # resize to match input model (256,256)
 
         car_img_top = car_img_top.astype('float32')
@@ -436,7 +449,8 @@ class OverlayGAN():
 
         start_pro_img = time.time()
         predict_image_norm = preprocess_img(predict_image_norm,img_size=(self.model_input[0],self.model_input[1])) # resize to match input model (256,256)
-        predict_image_norm = pad_images_to_same_size(predict_image_norm)
+        # predict_image_norm = pad_images_to_same_size(predict_image_norm)
+        predict_image_norm = up_downscale(predict_image_norm,(self.img_top_w,self.img_top_h),'upscale',self.type_process_scale) # resize (downscale) to match model input size
         # predict_image_norm = ((1 - mask_img_pano) * per_img_1000) + (mask_img_pano * predict_image_norm)
         predict_image_norm = self.seamless((predict_image_norm*255.0).astype(np.uint8),(per_img_1000*255.0).astype(np.uint8),self.mask_img_seamless)
         # predict_image_norm = predict_image_norm/255.0
@@ -554,7 +568,8 @@ class OverlayCube(OverlayGAN):
             # plt.imshow(mask_ori)
             # plt.show()
             print('mask bitwise')
-            pad_mask = pad_images_to_same_size(mask_ori/255.0)
+            # pad_mask = pad_images_to_same_size(mask_ori/255.0) # pad image (upscale) to match original inpaut size
+            pad_mask = up_downscale(mask_ori/255.0,(self.img_top_w,self.img_top_h),'upscale',self.type_process_scale) # resize (upscale) to match original input size
             self.mask_img[side_name] = pad_mask
             self.mask_img_seamless[side_name] = (pad_mask[:]*255.0).astype(np.uint8)
             # plt.imshow(cv2.resize(np.array(pad_mask),(512,512)))
@@ -571,8 +586,8 @@ class OverlayCube(OverlayGAN):
         #     plt.imshow(cv2.resize(check_cube_list[i], (512,512)))
         self.mask_pano_img = c2e(list(self.mask_img.values()), h=self.img_pano_h, w=self.img_pano_w, mode='bilinear', cube_format='list') # [front, right, back, left, top, bottom]
         self.mask_pano_img = self.mask_pano_img*255.0
-        plt.imshow(cv2.resize(self.mask_pano_img,(256,128)))
-        plt.show()
+        # plt.imshow(cv2.resize(self.mask_pano_img,(256,128)))
+        # plt.show()
         # --------------- transparent mask for model ---------------
         for count, side_name in enumerate(seg_mask):
             self.df_mask[side_name] = gen_tranparent_mask(self.in_mask[side_name])
@@ -658,10 +673,11 @@ class OverlayCube(OverlayGAN):
 
         # car image
         for count, side_name in enumerate(self.have_mask):
-            plt.imshow(image_cube[count])
-            plt.show()
+            # plt.imshow(image_cube[count])
+            # plt.show()
             if(self.have_mask[side_name]):
-                per_img = crop_center(image_cube[count],(self.model_input[0],self.model_input[1])) # resize to 290,190
+                # per_img = crop_center(image_cube[count],(self.model_input[0],self.model_input[1])) # crop image (downscale) to match model input size 
+                per_img = up_downscale(image_cube[count],(self.model_input[0], self.model_input[1]),'downscale',self.type_process_scale) # resize (downscale) to match model input size
                 car_img_top = preprocess_img(per_img,img_size=(self.model_input[0],self.model_input[1])) # resize to match input model (256,256)
 
                 car_img_top = car_img_top.astype('float32')
@@ -709,7 +725,8 @@ class OverlayCube(OverlayGAN):
 
                 start_pro_img = time.time()
                 predict_image_norm = preprocess_img(predict_image_norm,img_size=(self.model_input[0],self.model_input[1])) # resize to match input model (256,256)
-                predict_image_norm = pad_images_to_same_size(predict_image_norm)
+                # predict_image_norm = pad_images_to_same_size(predict_image_norm)
+                predict_image_norm = up_downscale(predict_image_norm,(self.img_top_w, self.img_top_h),'upscale',self.type_process_scale) # resize image to match real input size
                 # predict_image_norm = ((1 - mask_img_pano) * per_img_1000) + (mask_img_pano * predict_image_norm)
                 predict_image_norm = self.seamless((predict_image_norm*255.0).astype(np.uint8),(image_cube[count]).astype(np.uint8),self.mask_img_seamless[side_name])
                 # predict_image_norm = predict_image_norm/255.0
@@ -770,7 +787,7 @@ class MainApp(tk.Tk):
         super().__init__()
         self.title("Inpaint System Ver.1.4")
         self.geometry("700x550")
-        icon_path = "icon.ico"
+        icon_path = "page/image_app/icon.ico"
         self.iconbitmap(get_file_path(icon_path))
 
         # container holds all pages
@@ -800,7 +817,8 @@ class MainApp(tk.Tk):
                 "cube_bottom": None
             },
             "config_data": configs.get(list(configs.keys())[0], {}),
-            "segment_model": None
+            "segment_model": None,
+            "type_process_scale": 'resize'
         }
 
         # store pages in a dict
@@ -933,7 +951,8 @@ class PageTwo(tk.Frame):
         equ = Perspective(self.image_pano)    # Load equirectangular image
         self.full_top_img = equ.GetPerspective(167, self.config_data['coor'], -90, self.config_data['img_top_h'], self.config_data['img_top_w'])  # Specify parameters(FOV, theta, phi, height, width)
         # car image
-        per_img = crop_center(self.full_top_img,(self.config_data['model_input'][0],self.config_data['model_input'][1])) # resize to 290,190
+        # per_img = crop_center(self.full_top_img,(self.config_data['model_input'][0],self.config_data['model_input'][1])) # crop (downscale) to match model input size
+        per_img = up_downscale(self.full_top_img,(self.config_data['model_input'][0],self.config_data['model_input'][1]),'downscale',self.page_ctrl.shared_data['type_process_scale']) # resize (downscale) to match model input size
         # Convert to PIL Image
         pil_image = Image.fromarray(per_img.astype('uint8'))
         self.image["top_view"] = pil_image
@@ -948,7 +967,8 @@ class PageTwo(tk.Frame):
         for count, side_name in enumerate(self.image):
             if(count>0):
                 count = count - 1
-                car_cube_img = crop_center(self.image_pano_cube[count],(self.config_data['model_input'][0],self.config_data['model_input'][1]))
+                # car_cube_img = crop_center(self.image_pano_cube[count],(self.config_data['model_input'][0],self.config_data['model_input'][1])) # crop (downscale) to match model input size
+                car_cube_img = up_downscale(self.image_pano_cube[count],(self.config_data['model_input'][0],self.config_data['model_input'][1]),'downscale',self.page_ctrl.shared_data['type_process_scale']) # resize (downscale) to match model input size
                 self.image[side_name] = Image.fromarray(car_cube_img.astype('uint8'))
                 self.tk_image[side_name] = ImageTk.PhotoImage(self.image[side_name])
         self.nav_image = DictNavigator(self.image)
@@ -1004,7 +1024,8 @@ class PageTwo(tk.Frame):
         #     return
         self.binary_mask[self.side_label_show.get()] = preprocess_img(file_path,(self.config_data['img_top_h'], self.config_data['img_top_w'])) # open file by pillow
         self.binary_mask[self.side_label_show.get()] = binary_change(self.binary_mask[self.side_label_show.get()])
-        self.binary_mask[self.side_label_show.get()] = crop_center(self.binary_mask[self.side_label_show.get()],(self.config_data['model_input'][0],self.config_data['model_input'][1]))
+        # self.binary_mask[self.side_label_show.get()] = crop_center(self.binary_mask[self.side_label_show.get()],(self.config_data['model_input'][0],self.config_data['model_input'][1])) # crop (downscale) to match model input size
+        self.binary_mask[self.side_label_show.get()] = up_downscale(self.binary_mask[self.side_label_show.get()],(self.config_data['model_input'][0],self.config_data['model_input'][1]),'downscale',self.page_ctrl.shared_data['type_process_scale']) # resize (downscale) to match model input size
         overlar_image = ((self.binary_mask[self.side_label_show.get()]) * np.array(self.image[self.side_label_show.get()])) + np.array(self.image[self.side_label_show.get()])
         # plt.imshow(overlar_image)
         # plt.show()
@@ -1065,7 +1086,8 @@ class PageTwo(tk.Frame):
         if self.binary_mask[self.side_label_show.get()] is not None:
             save_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png")])
             if save_path:
-                tmp_save = pad_images_to_same_size(self.binary_mask[self.side_label_show.get()])
+                # tmp_save = pad_images_to_same_size(self.binary_mask[self.side_label_show.get()])
+                tmp_save = up_downscale(self.binary_mask[self.side_label_show.get()],(self.config_data['img_top_w'], self.config_data['img_top_h']),'upscale',self.page_ctrl.shared_data['type_process_scale']) # resize image to match real input size
                 tmp_save = Image.fromarray(tmp_save.astype('uint8'))
                 tmp_save.save(save_path)
                 print("Mask saved to:", save_path)
@@ -1178,6 +1200,7 @@ class ImageProcessingApp(tk.Frame):
         self.page_ctrl = controller
         self.config_data = {}  # <-- This will store the current config
         self.configs = configs
+        self.type_process_scale = 'resize' # 'pad_image' or 'resize'
         # self.coor = 0
         # self.mask = ""
         # self.img_top_h = 0
@@ -1282,7 +1305,7 @@ class ImageProcessingApp(tk.Frame):
         # self.progress = 
 
         # แสดงภาพ
-        image_path = "flow.png"
+        image_path = "page/image_app/flow.png"
         # image_path = r"C:/Users/batma/OneDrive/Documents/inpaint-system/cmd-inpaint/flow.png"
         
         try:
@@ -1307,6 +1330,7 @@ class ImageProcessingApp(tk.Frame):
             dir_list_input = glob.glob(path_input[0]+'*'+'.jpg')
             self.page_ctrl.shared_data["input_img"] = dir_list_input[0]
             self.page_ctrl.shared_data["config_data"] = self.config_data
+            self.page_ctrl.shared_data["type_process_scale"] = self.type_process_scale
             self.page_ctrl.show_frame(PageTwo)
         else:
             print('ไม่มีภาพในโฟลเดอร์')
@@ -1319,10 +1343,10 @@ class ImageProcessingApp(tk.Frame):
     def state_setting(self,config_name,status_setting):
         self.message_config.set('Start read '+config_name+' config...')
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
-        self.over_class = OverlayGAN(self.config_data,config_name)
+        self.over_class = OverlayGAN(self.config_data,config_name,self.type_process_scale)
         generator = load_model_generator(self.config_data['model_type'],self.config_data["model_input"],self.config_data["model_weight"])
         self.over_class.set_model_generator(generator)
-        self.over_cube_class = OverlayCube(self.config_data,config_name)
+        self.over_cube_class = OverlayCube(self.config_data,config_name,self.type_process_scale)
         self.over_cube_class.set_model_generator(generator)
         if(status_setting == 'initial'):
             segment_model = load_model_segment()

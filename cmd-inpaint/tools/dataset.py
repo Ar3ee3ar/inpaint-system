@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow import keras
 from tqdm import tqdm
 
-from tools.process_img import preprocess_img, move_img, flip_img, zoom_img
+from .process_img import preprocess_img, move_img, flip_img, zoom_img
 
 
 ## Ref: https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly.

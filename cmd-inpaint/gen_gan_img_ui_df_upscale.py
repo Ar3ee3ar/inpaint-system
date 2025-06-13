@@ -22,10 +22,12 @@ from deepfill.inpaint_model import InpaintGenerator
 from PIL import Image
 import matplotlib.pyplot as plt
 import itertools
+import torch
 # import yaml
 # tool
 from tools.process_img import preprocess_img, crop_center, pad_images_to_same_size, resize
 from tools.process_pano import Equirectangular,Perspective,inpaint_pano
+from tools.sam_tools.segment_anything import sam_model_registry
 from tools.sam_tools.classification_torch import bbox
 from tools.py360convert.py360convert import c2e, e2c
 # upscale Real ESRGAN
@@ -136,12 +138,12 @@ def esr_upscale(img,img_size):
     result_img = cv2.resize(img,img_size)
     return(result_img)
 
-
 # ----------------- initial model setting ---------------
-def set_model(model_type,model_input_2d,model_weight):
-    print('start model')
+def load_model_generator(model_type,model_input_2d,model_weight):
+    print('start inpainting model')
     # initial generator model
     keras.backend.clear_session()
+    # yolo_model = YOLO("yolov8n.pt")
     if(model_type == "p2p"):
         generator = p2pG.Generator(input_shape=[model_input_2d[0],model_input_2d[1],3])
         generator.load_weights(get_file_path(model_weight)) # 500
@@ -162,9 +164,14 @@ def set_model(model_type,model_input_2d,model_weight):
         generator.load_weights(get_file_path(model_weight))
     print('set_model: ',model_type)
     print('set_model: ',generator)
-    print('model start success')
+    print('inpainting model start success')
     return generator
 
+def load_model_segment():
+    print('start segmentation model')
+    sam = sam_model_registry["vit_l"](checkpoint=get_file_path("weight_sam/sam_vit_l_0b3195.pth")).to(device=torch.device('cpu'))
+    print('segmentation model start success')
+    return sam
 # ------------------- overlay function -------------------------
 
 class OverlayGAN():
@@ -230,8 +237,7 @@ class OverlayGAN():
 
     def set_model(self,generator):
         self.generator = generator
-        print('superclass: ',self.generator)
-        
+        print('superclass: ',self.generator)   
 
     def set_segMask(self,seg_mask):
         mask = np.array(seg_mask) # grayscale to ensure image is binary
