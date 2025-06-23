@@ -5,15 +5,17 @@ import sys
 import os
 import json
 
+from . import get_file_path, find_file_path
 # Add parent directory to sys.path
 sys.path.append("..")
 print('first: ',os.getcwd())
-from gen_gan_img_ui_deepfill import MainApp,ImageProcessingApp, get_file_path
+from page.open_page import MainApp
+from page.main_page import ImageProcessingApp
 
 class TestTkinterUI(unittest.TestCase):
     def setUp(self):
         # Set up a root window for each test
-        config_path = get_file_path("config_gan_ui.json")
+        config_path = find_file_path("config_gan_ui.json")
         with open(config_path, "r") as f:
             configs = json.load(f)
         self.configs = configs
