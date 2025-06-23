@@ -2,8 +2,8 @@
 
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image
+# import matplotlib.pyplot as plt
+# from PIL import Image
 
 class Perspective:
     def __init__(self, img_name):
@@ -250,12 +250,13 @@ def cube2panorama(image_list,width,height):
     return img
     
 def inpaint_pano(inpaint_pano_img,mask_pano_img,car_pano_img):
-    inpaint_pano_img = inpaint_pano_img/255.0
+    inpaint_pano_img = (inpaint_pano_img/255.0).astype(np.float32)
     # patch_image_im = Image.fromarray(((mask_pano_img)).astype(np.uint8))
     # patch_image_im.save("D:/inpaint_gan/car_ds/pic/car_equi_mask_inpaint.jpg")
-    mask_pano_img = mask_pano_img/255.0 # for rect_mask
+    mask_pano_img = (mask_pano_img/255.0).astype(np.float32) # for rect_mask
     # mask_pano_img[mask_pano_img != 0] = 1 # for car_mask
-    car_pano_img = car_pano_img/255.0
+    car_pano_img = (car_pano_img/255.0).astype(np.float32)
+    # inpaint_fill_pano = np.where(mask_pano_img>0.5, inpaint_pano_img,  car_pano_img)
     inpaint_fill_pano = ((mask_pano_img) * inpaint_pano_img) + ((1-mask_pano_img) * car_pano_img)
     return inpaint_fill_pano
 

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import tensorflow as tf
-import tensorflow_io as tfio
+# import tensorflow_io as tfio
 
 tf.config.run_functions_eagerly(True)
 

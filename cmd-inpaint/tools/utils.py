@@ -3,9 +3,11 @@ import os
 import glob
 import cv2
 import numpy as np
-from tensorflow import keras
-import tensorflow as tf
-import inspect
+# from tensorflow import keras
+# import tensorflow as tf
+# import inspect
+# check corrupted image
+from skimage import io
 
 from .process_img import preprocess_img, crop_center, pad_images_to_same_size, resize
 # from .pix2pix import Generator as p2pG
@@ -13,46 +15,44 @@ from .process_img import preprocess_img, crop_center, pad_images_to_same_size, r
 # from .deepfill.inpaint_model import InpaintGenerator
 # from .sam_tools.segment_anything import sam_model_registry
 
+# ------------------ function check corrupt file ------------------
+def write_file(path,msg):
+    with open(path, "a", encoding="utf-8") as f:
+        # if(str(e).find('image file is truncated') != -1):
+        # error_msg = "error: "+path.replace('\\','/')+" ไฟล์เสียหาย (corrupted image)"
+        f.write(msg+'\n')
+
+def check_corrupt(path,report_file=''):
+    # check  binary file -----------------------
+    # with open(path, 'rb') as f:
+    #     check_chars = f.read()[-2:]
+    # if check_chars != b'\xff\xd9':
+    #     # print('Not complete image')
+    #     error_msg = "error: "+path.replace('\\','/')+" ไฟล์เสียหาย (corrupted image)"
+    #     print(error_msg)
+    #     write_file(report_file, error_msg)
+    #     return True
+    # else:
+    #     return False
+    # check with skimage -------------------------
+    try:
+        _ = io.imread(path)
+        return False
+        # Do stuff with img
+    except Exception as e:
+        # print('found error ',e)
+        # if(not os.path.exists(report_file)): # if not found output folder -> create folder
+        #     create_fol(save_path)
+        # with open(report_file, "a", encoding="utf-8") as f:
+        if(str(e).find('image file is truncated') != -1):
+            error_msg = "error: "+path.replace('\\','/')+" ไฟล์เสียหาย (corrupted image)"
+            if(report_file!=''):
+                write_file(report_file, error_msg)
+                # f.write(error_msg+'\n')
+            print(error_msg)
+        return True
+
 # -------------- utility tools --------------------------------------
-
-# Helper to get file path near the .exe
-def get_file_path(filename, base_path=None, must_exist=True):
-    """
-    Locate a file based on caller's path or specified base path, with _MEIPASS fallback.
-
-    Args:
-        filename (str): File name to locate.
-        base_path (str, optional): Base directory to search from. If None, use caller's path.
-        must_exist (bool): If True, raise if not found.
-
-    Returns:
-        str: Full path to the file.
-
-    Raises:
-        FileNotFoundError: If not found and must_exist is True.
-    """
-    # Use caller’s path if base_path not provided
-    if base_path is None:
-        caller_path = os.path.abspath(os.path.dirname(inspect.stack()[1].filename))
-        base_path = caller_path
-
-    # Check local path
-    local_path = os.path.join(base_path, filename)
-    if os.path.exists(local_path):
-        return local_path
-
-    # Fallback to _MEIPASS if available
-    if hasattr(sys, "_MEIPASS"):
-        # Preserve relative layout inside bundle
-        relative_path = os.path.relpath(base_path, start=os.path.dirname(sys.argv[0]))
-        meipass_path = os.path.join(sys._MEIPASS, relative_path, filename)
-        if os.path.exists(meipass_path):
-            return meipass_path
-
-    if must_exist:
-        raise FileNotFoundError(f"File '{filename}' not found in '{base_path}' or _MEIPASS.")
-    return local_path
-
 def create_fol(path):
     if not os.path.exists(path): 
         os.makedirs(path)

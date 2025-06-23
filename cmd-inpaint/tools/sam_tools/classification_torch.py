@@ -30,7 +30,7 @@ def obj_detect(img,model):
 #     print('box time: ',(end_box - start_box))
 #     cv2.imwrite("D:/inpaint_gan/test_img/segment/"+str(count_num)+"_box"+side+".jpg", image_bgr)
 # #     return predicted_boxes, image_bgr
-    print(predicted_boxes)
+    # print(predicted_boxes)
     return predicted_boxes
     
 
@@ -72,7 +72,7 @@ def bbox(img_type, img, xy_box,model):
         # image_rgb = cv2.cvtColor(img_ori, cv2.COLOR_BGR2RGB)
         # print(len(predicted_boxes))
         if(True):
-            print('start segment')
+            # print('start segment')
             start_seg = time.time()
             # transformed_boxes = mask_predictor.transform.apply_boxes_torch(predicted_boxes, image_bgr.shape[:2])
 
@@ -124,7 +124,7 @@ def bbox(img_type, img, xy_box,model):
                     # plt.imshow(mask_image)
                     # plt.show()
                     h, w = masks[i].shape[-2:]
-                    print(masks[i][0].shape,' ',h,' ',w)
+                    # print(masks[i][0].shape,' ',h,' ',w)
                     # color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
                     # masks = masks.reshape(h, w, 1)
                     if final_mask is None:
@@ -141,21 +141,21 @@ def bbox(img_type, img, xy_box,model):
                 final_mask = np.full((img.shape[0],img.shape[1]), False, np.bool_) ## White background
                 final_mask = masks[0].reshape(h, w, 1)
             end_seg = time.time()
-            print('seg time: ',(end_seg - start_seg))
-            print('save seg')
+            # print('seg time: ',(end_seg - start_seg))
+            # print('save seg')
             final_mask = 255 * final_mask # final_mask.numpy()
         else:
             final_mask = np.full((image_bgr.shape[0],image_bgr.shape[1]), 0.0, np.float32) ## White background
 
         # visualize the predicted masks
-        print(final_mask)
+        # print(final_mask)
         # plt.figure(figsize=(10, 10))
         # plt.imshow(image_rgb)
         # plt.imshow(final_mask,cmap='gray',alpha=0.7)
         # plt.show()
         # image_save = cv2.cvtColor(final_mask, cv2.COLOR_RGB2BGR)
-        if not cv2.imwrite("D:/inpaint_gan/test_img/segment/"+str(count_num)+"_seg_"+side+".jpg", final_mask):
-            raise Exception("Could not write image")
+        # if not cv2.imwrite("D:/inpaint_gan/test_img/segment/"+str(count_num)+"_seg_"+side+".jpg", final_mask):
+        #     raise Exception("Could not write image")
         return final_mask
     # elif(img_type == 'cube'):
 

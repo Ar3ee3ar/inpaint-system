@@ -4,8 +4,10 @@ import sys
 from .main_page import ImageProcessingApp
 from .mask_page import MaskApp
 
+from . import get_file_path, find_file_path
+
 sys.path.append("..")
-from tools.utils import get_file_path
+# from tools.utils import get_file_path
 
 
 # ------------ main windows -------------------------------------
@@ -16,13 +18,13 @@ class MainApp(tk.Tk):
         self.title("Inpaint System Ver.1.4")
         self.geometry("700x550")
         icon_path = "image_app/icon.ico"
-        self.iconbitmap(get_file_path(icon_path))
+        self.iconbitmap(find_file_path(icon_path))
 
         # container holds all pages
         self.container = tk.Frame(self)
         self.container.pack()
 
-        print(configs.get(list(configs.keys())[0], {}))
+        # print(configs.get(list(configs.keys())[0], {}))
 
         # share data
         self.shared_data = {
@@ -44,9 +46,11 @@ class MainApp(tk.Tk):
                 "cube_top": None,
                 "cube_bottom": None
             },
+            "config_name": list(configs.keys())[0],
             "config_data": configs.get(list(configs.keys())[0], {}),
             "segment_model": None,
-            "type_process_scale": 'resize'
+            "type_process_scale": 'resize',
+            "mask_edited": False
         }
 
         # store pages in a dict
@@ -67,14 +71,43 @@ class MainApp(tk.Tk):
         frame = self.frames[page_class]
         frame.grid(row=0, column=0, sticky="nsew")
         frame.tkraise()
+        self.build_menu_for_frame(frame)
 
 
         # Dynamically resize the window
         if page_class == 'ImageProcessingApp':
             self.geometry("615x560")
         elif page_class == 'MaskApp':
-            self.geometry("1400x650")
+            self.geometry("1200x650")
 
         # Call on_show() if it exists
         if hasattr(frame, "on_show"):
-            frame.on_show()
+            frame.start_thread_on_show()
+
+    def build_menu_for_frame(self, frame):
+        menu = tk.Menu(self)
+
+        if isinstance(frame, MaskApp):
+            files_menu = tk.Menu(menu, tearoff=0) # tearoff - remove dashed line before menu item
+            files_menu.add_command(label="Load new image", command=frame.load_mask)
+            files_menu.add_command(label="Load config setting", command=frame.reload_config)
+            # files_menu.add_separator()
+            # files_menu.add_command(label="Back", command=frame.back_step)
+            menu.add_cascade(label="Files", menu=files_menu)
+
+            tools_menu = tk.Menu(menu, tearoff=0)
+            tools_menu.add_command(label="Rectangle mask", command=frame.direct_draw)
+            tools_menu.add_command(label="Segment mask", command=frame.start_thread_run_segment)
+            tools_menu.add_command(label="Clear mask", command=frame.clear_mask)
+            tools_menu.add_command(label="Save mask", command=frame.save_mask)
+            menu.add_cascade(label="Tools", menu=tools_menu)
+
+            edits_menu = tk.Menu(menu, tearoff=0)
+            edits_menu.add_command(label="New config", command=frame.new_config)
+            edits_menu.add_command(label="Save config", command=frame.save_config)
+            menu.add_cascade(label="Edits config", menu=edits_menu)
+
+            menu.add_command(label="Next step", command=frame.next_step)
+
+
+        self.config(menu=menu)

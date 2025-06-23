@@ -10,12 +10,15 @@ import sys
 from tensorflow import keras
 import tensorflow as tf
 import torch
+import time
+import datetime
 
 # from .mask_page import MaskApp
+from .loadingPopup_page import LoadingPopup
+from . import get_file_path, find_file_path
 
 sys.path.append("..")
-from tools import find_file_path
-from tools.utils import get_file_path, find_fol, create_fol
+from tools.utils import find_fol, create_fol, check_corrupt
 from tools.overlay import OverlayCube, OverlayGAN
 from tools.pix2pix import Generator as p2pG
 from tools.pix2pix import Discriminator as p2pD
@@ -27,7 +30,7 @@ event_obj = threading.Event()
 
 # ----------------- initial model setting ---------------
 def load_model_generator(model_type,model_input_2d,model_weight):
-    print('start inpainting model')
+    # print('start inpainting model')
     # initial generator model
     keras.backend.clear_session()
     # yolo_model = YOLO("yolov8n.pt")
@@ -49,8 +52,8 @@ def load_model_generator(model_type,model_input_2d,model_weight):
         # with h5py.File('G.weights.h5', 'r') as f:
         #     print(list(f.keys()))
         generator.load_weights(find_file_path(model_weight))
-    print('set_model: ',model_type)
-    print('set_model: ',generator)
+    # print('set_model: ',model_type)
+    # print('set_model: ',generator)
     print('inpainting model start success')
     return generator
 
@@ -63,11 +66,20 @@ def load_model_segment():
 # ------------------ precessing page --------------------------
 class ImageProcessingApp(tk.Frame):
     def __init__(self,parent,controller,configs):
-        super().__init__(parent, bg="green")
+        super().__init__(parent)
         self.page_ctrl = controller
         self.config_data = {}  # <-- This will store the current config
         self.configs = configs
         self.type_process_scale = 'resize' # 'pad_image' or 'resize'
+        self.have_mask_cube = {
+            "cube_front": False,
+            "cube_right": False,
+            "cube_back": False,
+            "cube_left": False,
+            "cube_top": False,
+            "cube_bottom": False
+        }
+        self.have_mask_top = False
         # self.coor = 0
         # self.mask = ""
         # self.img_top_h = 0
@@ -176,7 +188,7 @@ class ImageProcessingApp(tk.Frame):
         # image_path = r"C:/Users/batma/OneDrive/Documents/inpaint-system/cmd-inpaint/flow.png"
         
         try:
-            image = Image.open(get_file_path(image_path))
+            image = Image.open(find_file_path(image_path))
             image = image.resize((450, 250))
             self.photo = ImageTk.PhotoImage(image)
             tk.Label(main_frame, image=self.photo).pack(pady=10)
@@ -193,47 +205,75 @@ class ImageProcessingApp(tk.Frame):
     def start_segment(self):
         directory = self.dir_entry.get()
         path_input = find_fol(directory)
-        if(len(path_input) > 0):
+        try:
             dir_list_input = glob.glob(path_input[0]+'*'+'.jpg')
-            self.page_ctrl.shared_data["input_img"] = dir_list_input[0]
-            self.page_ctrl.shared_data["config_data"] = self.config_data
-            self.page_ctrl.shared_data["type_process_scale"] = self.type_process_scale
-            self.page_ctrl.show_frame('MaskApp')
-        else:
-            print('ไม่มีภาพในโฟลเดอร์')
-
+            if(len(dir_list_input) > 0):
+                if(not check_corrupt(dir_list_input[0])):
+                    self.page_ctrl.shared_data["input_img"] = dir_list_input[0]
+                    self.page_ctrl.shared_data["config_name"] = self.selected_config.get()
+                    self.page_ctrl.shared_data["config_data"] = self.config_data
+                    self.page_ctrl.shared_data["type_process_scale"] = self.type_process_scale
+                    self.run_button.config(text="เริ่มประมวลผล", bg="green") # change to start phase after view mask
+                    self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
+                    self.page_ctrl.show_frame('MaskApp')
+                else:
+                    print('พบภาพที่ไฟล์เสียหายในโฟลเดอร์')
+                    messagebox.showerror("Error", "พบภาพที่ไฟล์เสียหายในโฟลเดอร์")
+            else:
+                print('ไม่มีภาพในโฟลเดอร์')
+                messagebox.showerror("Error", "ไม่มีภาพในโฟลเดอร์")
+        except IndexError:
+            print('ไม่พบโฟลเดอร์เก็บภาพ (Camera)')
+            messagebox.showerror("Error", "ไม่พบโฟลเดอร์เก็บภาพ (Camera)")
+        # example_input = ''
+        # for i in range(len(dir_list_input)):
+        #     if(not check_corrupt(dir_list_input[i])):
+        #         example_input = dir_list_input[i]
+        #         break
+        # print('complete file: ',example_input)
         # # result_tk = ImageTk.PhotoImage(result)
         # label = tk.Label(top, image=result)
         # label.image = result  # Keep a reference!
         # label.pack()
 
+    def start_thread_state_setting(self,config_name,status_setting):
+        self.loading = LoadingPopup(self, "Processing...")
+        threading.Thread(target=self.state_setting, args=(config_name,status_setting)).start()
+
     def state_setting(self,config_name,status_setting):
         self.message_config.set('Start read '+config_name+' config...')
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
+        print("+++ top view setting +++")
         self.over_class = OverlayGAN(self.config_data,config_name,self.type_process_scale)
         generator = load_model_generator(self.config_data['model_type'],self.config_data["model_input"],self.config_data["model_weight"])
         self.over_class.set_model_generator(generator)
+        self.over_class.set_useMask()
+        print("+++ side view setting +++")
         self.over_cube_class = OverlayCube(self.config_data,config_name,self.type_process_scale)
         self.over_cube_class.set_model_generator(generator)
+        self.over_cube_class.set_useMask()
         if(status_setting == 'initial'):
             segment_model = load_model_segment()
             self.page_ctrl.shared_data['segment_model'] = segment_model
             # self.over_class.set_model_segment(segment_model)
             # self.over_cube_class.set_model_segment(segment_model)
         # self.over_cube_class.check_data()
+        self.page_ctrl.shared_data['mask_edited'] = False
         self.message_config.set('Complete setting '+config_name)
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
+        print("+++ update setting complete +++")
+        self.after(0, self.loading.close)  # Close popup safely from main thread
 
     def set_initial_config(self, config_name):
         if config_name in self.configs:
             self.selected_config.set(config_name)
             self.config_data = self.configs.get(config_name, {})  #  SET VALUE HERE
-            self.state_setting(config_name,'initial')
+            self.start_thread_state_setting(config_name,'initial')
         else:
             self.selected_config.set(list(self.configs.keys())[0])
             # config_name = self.selected_config.get()
             self.config_data = self.configs.get(list(self.configs.keys())[0], {})  #  SET VALUE HERE
-            self.state_setting((self.configs.keys())[0],'initial')
+            self.start_thread_state_setting((self.configs.keys())[0],'initial')
     
     # Refresh content when dropdown changes
     def refresh_config(self,event=None):
@@ -244,7 +284,7 @@ class ImageProcessingApp(tk.Frame):
         # self.output.delete("1.0", tk.END)
         # self.output.insert(tk.END, json.dumps(self.config_data["coor"], indent=2))
         # self.over_class = OverlayGPS(self.config_data,config_name)
-        self.state_setting(config_name,'update')
+        self.start_thread_state_setting(config_name,'update')
     
     def refresh_file_config(self,event):
         # self.message_config.set('update config file...')
@@ -254,6 +294,7 @@ class ImageProcessingApp(tk.Frame):
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
         # self.message_config.set('update complete')
         self.dropdown["values"] = list(self.configs.keys())
+        self.run_button.config(text="เริ่มประมวลผล", bg="green") # change to start phase after select new config setting
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
         # print('update: '+str(list(self.configs.keys())))
 
@@ -282,7 +323,7 @@ class ImageProcessingApp(tk.Frame):
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
 
     def stop_process(self):
-        print('stop process thread')
+        print('************************ stop process thread ************************')
         event_obj.set()
         self.hide_button(self.cancle_button)
         # self.cancel_action()
@@ -301,25 +342,46 @@ class ImageProcessingApp(tk.Frame):
 
     def start_thread_image(self):
         """Starts a new thread for the long-running task."""
-        print('start thread')
-        # if(self.page_ctrl.shared_data["segment_mask"] != None):
-        if not all(value is None for value in self.page_ctrl.shared_data["segment_mask"].values()):
-            if(self.page_ctrl.shared_data["segment_mask"]["top_view"] is not None):
-                self.over_class.set_segMask(self.page_ctrl.shared_data["segment_mask"]["top_view"])
-            keys_to_check = ["cube_front","cube_right","cube_back","cube_left","cube_top","cube_bottom"]
-            if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
-                # Get keys as a list
-                keys = list(self.page_ctrl.shared_data["segment_mask"].keys())
+        keys_to_check = ["cube_front","cube_right","cube_back","cube_left","cube_top","cube_bottom"]
+        # Get keys as a list
+        keys = list(self.page_ctrl.shared_data["segment_mask"].keys())
+        # Define range that overlay function want
+        start = keys.index("cube_front")
+        end = keys.index("cube_bottom")
+        # if edit mask on mask_page
+        if(self.page_ctrl.shared_data["mask_edited"]):
+            self.over_class.set_segMask(self.page_ctrl.shared_data["segment_mask"]["top_view"])
+            selected = {k: self.page_ctrl.shared_data["segment_mask"][k] for k in keys[start:end + 1]}
+            self.over_cube_class.set_segMask(selected)
+        # else:
+        #     # if found mask value in shared data
+        #     if not all(value is None for value in self.page_ctrl.shared_data["segment_mask"].values()):
+        #         print('set seg_mask from mask_page')
+        #         # if not found mask value (top view)
+        #         if(self.page_ctrl.shared_data["segment_mask"]["top_view"] is not None):
+        #             self.over_class.set_segMask(self.page_ctrl.shared_data["segment_mask"]["top_view"])
+        #         # if not found mask in cube map
+        #         if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
+        #             # Slice and build new dictionary that stored mask
+        #             selected = {k: self.page_ctrl.shared_data["segment_mask"][k] for k in keys[start:end + 1]}
+        #             self.over_cube_class.set_segMask(selected)
 
-                # Define range
-                start = keys.index("cube_front")
-                end = keys.index("cube_bottom")
-
-                # Slice and build new dictionary
-                selected = {k: self.page_ctrl.shared_data["segment_mask"][k] for k in keys[start:end + 1]}
-                self.over_cube_class.set_segMask(selected)
         directory = self.dir_entry.get()
         overwrite = self.overwrite_var.get()
+        mask_top_setting = self.over_class.get_haveMask_status()
+        # print(mask_top_setting)
+        mask_cube_setting = self.over_cube_class.get_haveMask_status()
+        # print(mask_cube_setting)
+        # print((not mask_top_setting),' ',(not any(mask_cube_setting[key] for key in keys_to_check)))
+        
+        if not directory:
+            messagebox.showerror("Error", "Please select a directory.")
+            return
+        
+        if(not mask_top_setting) and (not any(mask_cube_setting[key] for key in keys_to_check)):
+            messagebox.showerror("Error", "Please select mask for inpainting")
+            return
+        
         self.run_button.config(text="กำลังประมวลผล", bg="orange")
         # self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
         self.show_button(self.cancle_button)
@@ -330,10 +392,8 @@ class ImageProcessingApp(tk.Frame):
         self.progress_per.set(0)
         self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
 
-        if not directory:
-            messagebox.showerror("Error", "Please select a directory.")
-            return
         # ---------- start inpainting thread ----------------------------
+        print('************************ start thread ************************')
         thread = threading.Thread(target=self.start_processing, args=(directory,overwrite))
         thread.daemon = True  # Daemon thread will exit when the main program exits
         thread.start()
@@ -355,6 +415,7 @@ class ImageProcessingApp(tk.Frame):
                 self.run_button.config(text="หยุดการทำงาน", bg="red")
                 self.update_idletasks()  # อัปเดต UI ให้เห็นการเปลี่ยนแปลงทันที
                 break
+            print('--------------------------------------------')
             print(f"path_input: {path_input[i]}")
             
             # ดึงชื่อโฟลเดอร์ที่อยู่ก่อนสุดท้าย
@@ -368,6 +429,8 @@ class ImageProcessingApp(tk.Frame):
             main_path = path_input[i]
             # print(main_path)
             target = []
+            normal_file = 0
+            corrupted_file = 0
             dir_list_input = glob.glob(main_path+'*'+'.jpg')
             dir_list_input.sort()
             if(not os.path.exists(save_path)): # if not found output folder -> create folder
@@ -380,6 +443,8 @@ class ImageProcessingApp(tk.Frame):
                         if(os.path.exists(pic_name)):
                             dir_list_input.remove(item)
             if(len(dir_list_input)>0):
+                time_now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                report_file = save_path+'/'+line_name+'_error_report_'+time_now+'.txt'
                 for i in range(len(dir_list_input)):
                     # print(dir_list_input[i])
                     # print(dir_list_input[i].split('\\'))
@@ -399,21 +464,37 @@ class ImageProcessingApp(tk.Frame):
                     # --------------------------------------------------------
                     # end inpaint process file
                     keys_to_check = ["cube_front","cube_right","cube_back","cube_left","cube_top","cube_bottom"]
-                    if(self.page_ctrl.shared_data["segment_mask"]["top_view"] is not None):
-            #     self.over_class.set_segMask(self.page_ctrl.shared_data["segment_mask"]["top_view"])
-            # keys_to_check = ["cube_front","cube_right","cube_back","cube_left","cube_top","cube_bottom"]
-            # if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
-                        final_pano_output = self.over_class.overlay(main_path,save_path,coor)
-                        if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
-                            self.over_cube_class.overlay(final_pano_output,save_path,coor)
+                    if(not check_corrupt(main_path+ "img_"+str(coor).rjust(6, '0')+".jpg",report_file)):
+                        if((self.over_class.get_haveMask_status())):
+                            #     self.over_class.set_segMask(self.page_ctrl.shared_data["segment_mask"]["top_view"])
+                            # keys_to_check = ["cube_front","cube_right","cube_back","cube_left","cube_top","cube_bottom"]
+                            # if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
+                            start_top = time.time()
+                            final_pano_output = self.over_class.overlay(main_path,coor)
+                            # print("top inpaint: ",(time.time() - start_top))
+                            if (any((self.over_cube_class.get_haveMask_status())[key] for key in keys_to_check)):
+                                # print('overlay cube')
+                                start_cube = time.time()
+                                final_cube_output = self.over_cube_class.overlay(final_pano_output,coor)
+                                self.over_cube_class.save_pano(final_cube_output,save_path,coor)
+                                # print("cube inpaint: ",(time.time() - start_cube))
+                            else:
+                                self.over_class.save_pano(final_pano_output,save_path,coor)
+                        else:
+                            if (any((self.over_cube_class.get_haveMask_status())[key] for key in keys_to_check)):
+                                final_cube_output = self.over_cube_class.overlay(main_path,coor)
+                                self.over_cube_class.save_pano(final_cube_output,save_path,coor)
+                        normal_file = normal_file + 1
                     else:
-                        if not all(self.page_ctrl.shared_data["segment_mask"][key] is None for key in keys_to_check):
-                            self.over_cube_class.overlay(main_path,save_path,coor)
+                        corrupted_file = corrupted_file + 1
                     percent_num = (int(count_pic+1)*100)/len(target)
                     # print(count_pic,' from ',len(target),' => ',percent_num,'%')
                     self.progress.set(str(count_pic+1)+'/'+str(len(target)))
                     self.progress_per.set(int(percent_num))
                     self.update_idletasks()
+                print(f"จำนวนไฟล์สมบูรณ์: {normal_file} ภาพ \nจำนวนไฟล์เสียหาย: {corrupted_file} ภาพ")
+                if(corrupted_file>0):
+                    print(f"error report: {report_file}")
                     # time.sleep(1) 
         if not(event_obj.is_set()):
             self.run_button.config(text="เสร็จสิ้น", bg="lightgreen")
