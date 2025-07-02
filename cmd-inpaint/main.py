@@ -4,13 +4,23 @@ import sys
 import shutil
 
 from page.open_page import MainApp
-# from tools.utils import get_file_path
 
 # Helper to get file path near the .exe
-def get_file_path(filename):
+def get_file_path(filename:str) -> str:
     """
-    Try to locate the file either in the bundled PyInstaller directory (_MEIPASS)
-    or externally next to the executable or script.
+    Locate a file by searching common locations depending on how the application is run.
+    This function attempts to find the specified file by checking:
+        1. The PyInstaller temporary directory (_MEIPASS) if running as a bundled executable.
+        2. The directory containing the executable if running as a bundled executable.
+        3. The directory containing the script if running from source.
+    Args:
+        filename (str): The name of the file to locate.
+    Returns:
+        str: The absolute path to the located file.
+    Raises:
+        FileNotFoundError: If the file cannot be found in any of the searched locations.
+    Notes:
+        - search for file path that in same hierarchy of caller
     """
     paths_to_try = []
 
@@ -35,18 +45,11 @@ def get_file_path(filename):
 
 # Run the Application
 if __name__ == "__main__":
-    # if hasattr(sys, '_MEIPASS'):
-    #     print("PyInstaller _MEIPASS temp folder:")
-    #     print(sys._MEIPASS)
-    #     temp_dir = sys._MEIPASS
-    #     shutil.copytree(temp_dir, "meipass_copy", dirs_exist_ok=True)
-    #     print("Copied to ./meipass_copy")
-    # Load configs
-    config_path = get_file_path("config_gan_ui.json")
+    # Load configs file
+    config_path = 'config_gan_ui.json'
     with open(config_path, "r") as f:
         configs = json.load(f)
-    # print(configs["kmutnb"])
-    # initial_config = configs["kmutnb"]
+    # Call main_page to initialize tkinter gui
     app = MainApp(configs)
-    # app = ImageProcessingApp(configs)
+    # an infinite loop used to run the application, wait for an event to occur, and process the event as long as the window is not closed.
     app.mainloop()

@@ -2,18 +2,53 @@
 
 import cv2
 import numpy as np
-# import matplotlib.pyplot as plt
-# from PIL import Image
 
 class Perspective:
-    def __init__(self, img_name):
-        self._img = img_name
+    """
+    Generates a perspective projection from an equirectangular (panoramic) image.
+    Args:
+        FOV (float): Field of view in degrees for the output perspective image.
+        THETA (float): Horizontal rotation angle (left/right) in degrees.
+        PHI (float): Vertical rotation angle (up/down) in degrees.
+        height (int): Height of the output perspective image.
+        width (int): Width of the output perspective image.
+    Returns:
+        numpy.ndarray: The perspective-projected image as a NumPy array.
+    Notes:
+        - The function computes the perspective transformation by mapping the specified FOV and orientation (THETA, PHI)
+          onto the equirectangular source image.
+        - Uses OpenCV for remapping and rotation matrix calculations.
+        - Handles border wrapping for seamless panoramic images.
+    """
+
+    def __init__(self, img:np.ndarray) -> None:
+        """
+        Initialize data to Generates a perspective projection from an equirectangular (panoramic) image.
+        Args:
+            img (np.ndarray): Numpy equirectangular (panoramic) image
+        """
+        self._img = img
         
         [self._height, self._width, _] = self._img.shape
         # print(self._img.shape)
     
 
-    def GetPerspective(self, FOV, THETA, PHI, height, width):
+    def GetPerspective(self, FOV:float, THETA:float, PHI:float, height:int, width:int) -> np.ndarray:
+        """
+        Generates a perspective view from an equirectangular panorama image.
+        Args:
+            FOV (float): Field of view in degrees for the output perspective image.
+            THETA (float): Horizontal rotation angle (left/right) in degrees.
+            PHI (float): Vertical rotation angle (up/down) in degrees.
+            height (int): Height of the output perspective image.
+            width (int): Width of the output perspective image.
+        Returns:
+            numpy.ndarray: The perspective image generated from the equirectangular panorama.
+        Notes:
+            - The function computes the mapping from the perspective view to the equirectangular panorama using rotation matrices.
+            - The output image is generated using OpenCV's remap function with cubic interpolation and border wrapping.
+            - THETA and PHI specify the center direction of the perspective view in spherical coordinates.
+        """
         #
         # THETA is left/right angle, PHI is up/down angle, both in degree
         #
@@ -65,8 +100,41 @@ class Perspective:
         return persp
     
 class Equirectangular:
-    def __init__(self, img_name , FOV, THETA, PHI ,type_img='img'):
-        self._img = img_name
+    """
+    A class for processing and transforming equirectangular panoramic images.
+    This class provides methods to convert an input image (or mask) into an equirectangular projection
+    with specified field of view (FOV) and rotation angles (THETA, PHI). It supports both image and mask
+    types, and can generate perspective views from the equirectangular panorama.
+    Attributes:
+        _img (np.ndarray): The input image or mask, possibly inverted if type_img is 'mask'.
+        _height (int): Height of the input image.
+        _width (int): Width of the input image.
+        wFOV (float): Horizontal field of view in degrees.
+        THETA (float): Rotation angle around the z-axis (left/right) in degrees.
+        PHI (float): Rotation angle around the y-axis (up/down) in degrees.
+        hFOV (float): Computed vertical field of view in degrees.
+        w_len (float): Tangent of half the horizontal FOV in radians.
+        h_len (float): Tangent of half the vertical FOV in radians.
+    Methods:
+        __init__(img_name, FOV, THETA, PHI, type_img='img'):
+            Initializes the Equirectangular object with the given image, FOV, rotation angles, and type.
+        GetEquirec(height, width):
+            Generates an equirectangular projection of the image with the specified output height and width.
+            Applies the specified FOV and rotation angles, and returns the perspective image and mask.
+            Args:
+                height (int): The height of the output equirectangular image.
+                width (int): The width of the output equirectangular image.
+            Returns:
+                tuple: A tuple containing:
+                    - persp (np.ndarray): The perspective-transformed image.
+                    - mask (np.ndarray): The mask indicating valid regions in the output image.
+    """
+
+    def __init__(self, img:np.ndarray , FOV:float, THETA:float, PHI:float ,type_img:str='img'):
+        """
+        Initializes the Equirectangular object with the given image, FOV, rotation angles, and type.
+        """
+        self._img = img
         if(type_img == 'mask'):
             self._img = cv2.bitwise_not(self._img)
         [self._height, self._width, _] = self._img.shape
@@ -80,7 +148,18 @@ class Equirectangular:
 
     
 
-    def GetEquirec(self,height,width):
+    def GetEquirec(self, height: int, width: int) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Generates an equirectangular projection of the image with the specified output height and width.
+            Applies the specified FOV and rotation angles, and returns the perspective image and mask.
+            Args:
+                height (int): The height of the output equirectangular image.
+                width (int): The width of the output equirectangular image.
+            Returns:
+                tuple: A tuple containing:
+                    - persp (np.ndarray): The perspective-transformed image.
+                    - mask (np.ndarray): The mask indicating valid regions in the output image.
+        """
         #
         # THETA is left/right angle, PHI is up/down angle, both in degree
         #
@@ -132,25 +211,45 @@ class Equirectangular:
         mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
         persp = persp * mask
         
-#         # ค่อยมาเปลี่ยนอีกที
-#         for j in range(height):
-#             for i in range(width):
-#         #       # Replace the pixels in the original image with the replacement image's pixels
-#                 self._oimg[j,i] = persp[j, i]
-        
-        
         return persp , mask
     
 class MultiPerspective:
-    def __init__(self, img_array , F_T_P_array ):
-        
+    """
+    MultiPerspective class for merging multiple perspective images into a single equirectangular panorama.
+    Attributes:
+        img_array (list): List of input images or image file paths.
+        F_T_P_array (list): List of [FOV, Theta, Phi] parameter lists for each image.
+    Methods:
+        __init__(img_array, F_T_P_array):
+            Initializes the MultiPerspective object with arrays of images and their corresponding FOV, Theta, and Phi parameters.
+        GetEquirec(height, width):
+            Generates a merged equirectangular image of the specified height and width by projecting each input image using its parameters and averaging overlapping regions.
+            Args:
+                height (int): Height of the output equirectangular image.
+                width (int): Width of the output equirectangular image.
+            Returns:
+                numpy.ndarray: The merged equirectangular image as a NumPy array.
+    """
+
+    def __init__(self, img_array:list , F_T_P_array:list ):
+        """
+        Initializes the MultiPerspective object with arrays of images and their corresponding FOV, Theta, and Phi parameters.
+        """
         assert len(img_array)==len(F_T_P_array)
         
         self.img_array = img_array
         self.F_T_P_array = F_T_P_array
     
 
-    def GetEquirec(self,height,width):
+    def GetEquirec(self, height:int, width:int):
+        """
+        Generates a merged equirectangular image of the specified height and width by projecting each input image using its parameters and averaging overlapping regions.
+            Args:
+                height (int): Height of the output equirectangular image.
+                width (int): Width of the output equirectangular image.
+            Returns:
+                numpy.ndarray: The merged equirectangular image as a NumPy array.
+        """
         #
         # THETA is left/right angle, PHI is up/down angle, both in degree
         #
@@ -164,29 +263,22 @@ class MultiPerspective:
             merge_mask +=mask
         merge_mask = np.where(merge_mask==0,1,merge_mask)
         merge_image = (np.divide(merge_image,merge_mask))
-        # print(merge_image.shape)
-        # plt.imshow(merge_image)
-        # plt.show()
-        # plt.imshow(merge_mask)
-        # plt.show()
         
         return merge_image
     
-def panorama2cube(image, cube_size = 1000):
+def panorama2cube(image:np.ndarray, cube_size:int = 1000) -> list:
+    """
+    Converts an equirectangular panorama image to six cube face images.
+    Args:
+        image (np.ndarray): The input equirectangular panorama image.
+        cube_size (int, optional): The size (width and height) of each cube face image. Defaults to 1000.
+    Returns:
+        list: A list of six images corresponding to the cube faces in the following order:
+            [front, right, back, left, top, bottom].
+    Note:
+        Requires the Perspective class with a GetPerspective method for extracting cube faces.
+    """
 
-    # cube_size = 1000
-
-    # if not os.path.exists(output_dir):
-    #     os.mkdir(output_dir)
-
-    # all_image = sorted(glob.glob(input_dir + '/*.*'))
-
-    # print(all_image)
-
-
-    # for index in range(len(all_image)):
-    # image = '../Opensfm/source/library/test-1/frame{:d}.png'.format(i)
-    # Equirectangular(predict_image_norm,167, 0, -90)  
     equ = Perspective(image)    # Load equirectangular image
     #
     # FOV unit is degree
@@ -195,44 +287,29 @@ def panorama2cube(image, cube_size = 1000):
     # height and width is output image dimension
     #
 
-    # out_dir = output_dir + '/%02d/'%(index)
-    # if not os.path.exists(out_dir):
-    #     os.mkdir(out_dir)
-
     f_img = equ.GetPerspective(90, 0, 0, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output1 = out_dir +  'front.png'
-    # cv2.imwrite(output1, img)
-
     r_img = equ.GetPerspective(90, 90, 0, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output2 = out_dir + 'right.png' 
-    # cv2.imwrite(output2, img)
-
-
     back_img = equ.GetPerspective(90, 180, 0, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output3 = out_dir + 'back.png' 
-    # cv2.imwrite(output3, img)
-
     l_img = equ.GetPerspective(90, 270, 0, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output4 = out_dir + 'left.png' 
-    # cv2.imwrite(output4, img)
-
     t_img = equ.GetPerspective(90, 0, 90, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output5 = out_dir + 'top.png' 
-    # cv2.imwrite(output5, img)
-
     bot_img = equ.GetPerspective(90, 0, -90, cube_size, cube_size)  # Specify parameters(FOV, theta, phi, height, width)
-    # output6 = out_dir + 'bottom.png' 
-    # cv2.imwrite(output6, img)
+
     return [f_img, r_img, back_img, l_img, t_img, bot_img]
 
-def cube2panorama(image_list,width,height):
+def cube2panorama(image_list:list, width:int, height:int) -> np.ndarray:
+    """
+    Converts a list of six cube face images into a single equirectangular panorama image.
+    Args:
+        image_list (list): A list of six images representing the cube faces in the following order:
+            [front, right, back, left, top, bottom].
+        width (int): The width of the output panorama image.
+        height (int): The height of the output panorama image.
+    Returns:
+        numpy.ndarray: The resulting equirectangular panorama image.
+    Raises:
+        IndexError: If image_list does not contain exactly six images.
+    """
 
-    # width = 1920
-    # height = 960
-
-    # if not os.path.exists(output_dir):
-    #     os.mkdir(output_dir)
-    
     front = image_list[0]
     right = image_list[1]
     back = image_list[2]
@@ -249,15 +326,24 @@ def cube2panorama(image_list,width,height):
     img = per.GetEquirec(height,width)  
     return img
     
-def inpaint_pano(inpaint_pano_img,mask_pano_img,car_pano_img):
+def inpaint_pano(inpaint_pano_img:np.ndarray, mask_pano_img:np.ndarray, car_pano_img:np.ndarray) -> np.ndarray:
+    """
+    Inpaints a panoramic image by blending an inpainted region with the original image using a mask.
+    Args:
+        inpaint_pano_img (np.ndarray): The inpainted panoramic image as a NumPy array, with pixel values in [0, 255].
+        mask_pano_img (np.ndarray): The mask image as a NumPy array, with pixel values in [0, 255]. Non-zero values indicate regions to use from the inpainted image.
+        car_pano_img (np.ndarray): The original panoramic image as a NumPy array, with pixel values in [0, 255].
+    Returns:
+        np.ndarray: The blended panoramic image as a NumPy array with pixel values in [0, 1], where the inpainted and original images are combined according to the mask.
+    """
+    # cast to float32
     inpaint_pano_img = (inpaint_pano_img/255.0).astype(np.float32)
-    # patch_image_im = Image.fromarray(((mask_pano_img)).astype(np.uint8))
-    # patch_image_im.save("D:/inpaint_gan/car_ds/pic/car_equi_mask_inpaint.jpg")
     mask_pano_img = (mask_pano_img/255.0).astype(np.float32) # for rect_mask
     # mask_pano_img[mask_pano_img != 0] = 1 # for car_mask
     car_pano_img = (car_pano_img/255.0).astype(np.float32)
-    # inpaint_fill_pano = np.where(mask_pano_img>0.5, inpaint_pano_img,  car_pano_img)
-    inpaint_fill_pano = ((mask_pano_img) * inpaint_pano_img) + ((1-mask_pano_img) * car_pano_img)
+    # inpaint_fill_pano = np.where(mask_pano_img>0.5, inpaint_pano_img,  car_pano_img) # hard overlay (have sharp border between outter and inner image)
+    # (select only inpaint area) + (reversed mask to make outter area into non-zero pixel to get only non-inpainted area)
+    inpaint_fill_pano = ((mask_pano_img) * inpaint_pano_img) + ((1-mask_pano_img) * car_pano_img) # soft overlay (mixed between outter and inner image)
     return inpaint_fill_pano
 
 # def inpaint_random(inpaint_pano_img,mask,car_pano_img):

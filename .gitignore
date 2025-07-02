@@ -13,5 +13,3 @@ cmd-inpaint/output*.txt
 **/.eggs/
 **/*.egg-info/
 **/gfpgan/
-**/Output/
-**/.pytest_cache/

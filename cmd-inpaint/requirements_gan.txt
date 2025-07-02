@@ -22,6 +22,8 @@ scikit-learn==1.3.2
 tqdm==4.66.1
 
 #segmentation part
+torch==2.7.0
+torchvision==0.22.0
 ultralytics==8.1.14 
 segment-anything==1.0
 

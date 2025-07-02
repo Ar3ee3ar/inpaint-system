@@ -24,9 +24,13 @@ def get_file_path(filename):
 
     return ""
 
-def find_file_path(filename):
+def find_file_path(filename:str) -> str:
     """
     Locate file relative to the project root, compatible with PyInstaller.
+    Args:
+        filename (str): The name of the file to locate.
+    Returns:
+        str: absolute path of wanted file
     """
     current_file = os.path.abspath(__file__)
     project_root = os.path.abspath(os.path.join(current_file, "..", ".."))  # Adjust as needed
@@ -38,8 +42,11 @@ def find_file_path(filename):
         if result_path == "":
             # Then try project root fallback
             result_path = get_file_path(rel_path)
-        return result_path
-
-    # Normal source mode: just use full relative path from root
-    return get_file_path(rel_path)
+    else:
+        # Normal source mode: just use full relative path from root
+        result_path = get_file_path(rel_path)
+        if(result_path == ""):
+            raise FileNotFoundError(f"File '{filename}' not found in bundle or external directory.")
+        
+    return result_path
 

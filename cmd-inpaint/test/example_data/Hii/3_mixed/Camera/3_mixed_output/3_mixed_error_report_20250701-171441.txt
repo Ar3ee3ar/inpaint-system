@@ -1,0 +1,1 @@
+error: D:/test_server_client/cmd-inpaint/test/example_data/Hii/3_mixed/Camera/img_001600.jpg ไฟล์เสียหาย (corrupted image)
