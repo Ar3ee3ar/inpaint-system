@@ -1,0 +1,25 @@
+{
+  "global": {
+    "input": {
+      "folder_format": "Camera",
+      "prefix_format": "img_",
+      "suffix_format": ""
+    },
+    "output": {
+      "folder_format": "output",
+      "prefix_format": "",
+      "suffix_format": ""
+    }
+  },
+  "system": {
+    "model": {
+      "type_process_scale": "resize",
+      "config_file": "config_gan_ui.json"
+    },
+    "gps": {
+      "type_process_scale": "resize",
+      "config_file": "config_ui.json",
+      "gps_file": "_camera_position.txt"
+    }
+  }
+}

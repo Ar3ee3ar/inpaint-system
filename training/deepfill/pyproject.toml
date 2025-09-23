@@ -1,0 +1,9 @@
+[project]
+name = "deepfill"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "tensorflow==2.5",
+]

@@ -1,0 +1,36 @@
+img_mode:
+  per: true
+  cube: true
+
+per:  # for cropping bird-view image
+  height_crop:
+    crop_T: true # crop top of image
+    crop_Cy: true # crop center of image by y-axis (vertical)
+    crop_B: true # crop bottom of image
+  width_crop:
+    crop_L: false
+    crop_Cx: true
+    crop_R: false
+  flip: true
+  rand_m: true
+
+cube:
+  side:
+    cube-front: false
+    cube-right: false
+    cube-back: false
+    cube-left: true
+    cube-top: false
+    cube-bottom: false
+  height_crop:
+    crop_T: false # crop top of image
+    crop_Cy: true # crop center of image by y-axis (vertical)
+    crop_B: true # crop bottom of image
+  width_crop:
+    crop_L: true
+    crop_Cx: true
+    crop_R: true
+  flip: false
+  rand_m: true
+
+

@@ -1,0 +1,6 @@
+car_ds/pic/kmutnb_aug/img_000000_per_flip.jpg
+car_ds/pic/kmutnb_aug/img_000201_per.jpg
+car_ds/pic/kmutnb_aug/img_000201_top_crop_flip.jpg
+car_ds/pic/kmutnb_aug/img_000000_per.jpg
+car_ds/pic/kmutnb_aug/img_000000_center_y_left_crop_cube-left.jpg
+car_ds/pic/kmutnb_aug/img_000000_center_crop.jpg

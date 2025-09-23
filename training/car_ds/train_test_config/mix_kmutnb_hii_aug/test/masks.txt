@@ -1,0 +1,12 @@
+car_ds/pic/kmutnb_aug/img_000000_per_flip_mask.png
+car_ds/pic/kmutnb_aug/img_000201_per_mask.png
+car_ds/pic/kmutnb_aug/img_000201_top_crop_flip_mask.png
+car_ds/pic/kmutnb_aug/img_000000_per_mask.png
+car_ds/pic/kmutnb_aug/img_000000_center_y_left_crop_cube-left_mask.png
+car_ds/pic/kmutnb_aug/img_000000_center_crop_mask.png
+car_ds/pic/hii_aug/img_000000_per_flip_mask.png
+car_ds/pic/hii_aug/img_000001_per_mask.png
+car_ds/pic/hii_aug/img_000001_top_crop_flip_mask.png
+car_ds/pic/hii_aug/img_000000_per_mask.png
+car_ds/pic/hii_aug/img_000000_center_y_left_crop_cube-left_mask.png
+car_ds/pic/hii_aug/img_000000_center_crop_mask.png

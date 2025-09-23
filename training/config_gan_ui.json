@@ -1,0 +1,170 @@
+{
+    "kmutnb": {
+        "coor": 0,
+        "img_top_h": 1000,
+        "img_top_w": 1000,
+        "img_pano_h": 4096,
+        "img_pano_w": 8192,
+        "seamless_center_h": 500,
+        "seamless_center_w": 500,
+        "move_img_up": 495,
+        "move_img_down": -495,
+        "x_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "y_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "relate_dist": [
+            -12,
+            12
+        ],
+        "model_input": [
+            512,
+            512
+        ],
+        "model_weight": "./weight/G.h5",
+        "model_type": "df",
+        "inpaint_side": {
+            "top_view": true,
+            "cube_front": false,
+            "cube_right": false,
+            "cube_back": true,
+            "cube_left": false,
+            "cube_top": false,
+            "cube_bottom": false
+        },
+        "object_box": {
+            "top_view": [],
+            "cube_front": [],
+            "cube_right": [],
+            "cube_back": [],
+            "cube_left": [],
+            "cube_top": [],
+            "cube_bottom": []
+        },
+        "mask": {
+            "top_view": "./mask/kmutnb_top_view.jpg",
+            "cube_front": "",
+            "cube_right": "",
+            "cube_back": "./mask/kmutnb_cube_back.jpg",
+            "cube_left": "",
+            "cube_top": "",
+            "cube_bottom": ""
+        }
+    },
+    "hii": {
+        "coor": 27,
+        "img_top_h": 1000,
+        "img_top_w": 1000,
+        "img_pano_h": 4096,
+        "img_pano_w": 8192,
+        "seamless_center_h": 499,
+        "seamless_center_w": 450,
+        "move_img_up": 495,
+        "move_img_down": -495,
+        "x_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "y_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "relate_dist": [
+            -12,
+            12
+        ],
+        "model_input": [
+            512,
+            512
+        ],
+        "model_weight": "./weight/G.h5",
+        "model_type": "df",
+        "inpaint_side": {
+            "top_view": true,
+            "cube_front": false,
+            "cube_right": false,
+            "cube_back": false,
+            "cube_left": false,
+            "cube_top": false,
+            "cube_bottom": false
+        },
+        "object_box": {
+            "top_view": [],
+            "cube_front": [],
+            "cube_right": [],
+            "cube_back": [],
+            "cube_left": [],
+            "cube_top": [],
+            "cube_bottom": []
+        },
+        "mask": {
+            "top_view": "./mask/hii_top_view.jpg",
+            "cube_front": "",
+            "cube_right": "",
+            "cube_back": "",
+            "cube_left": "",
+            "cube_top": "",
+            "cube_bottom": ""
+        }
+    },
+    "default": {
+        "coor": 0,
+        "img_top_h": 1000,
+        "img_top_w": 1000,
+        "img_pano_h": 4096,
+        "img_pano_w": 8192,
+        "seamless_center_h": 500,
+        "seamless_center_w": 500,
+        "move_img_up": 495,
+        "move_img_down": -495,
+        "x_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "y_new_coor": [
+            29.663,
+            1.6444
+        ],
+        "relate_dist": [
+            -12,
+            12
+        ],
+        "model_input": [
+            512,
+            512
+        ],
+        "model_weight": "./weight/G.h5",
+        "model_type": "df",
+        "inpaint_side": {
+            "top_view": false,
+            "cube_front": false,
+            "cube_right": false,
+            "cube_back": false,
+            "cube_left": false,
+            "cube_top": false,
+            "cube_bottom": false
+        },
+        "object_box": {
+            "top_view": [],
+            "cube_front": [],
+            "cube_right": [],
+            "cube_back": [],
+            "cube_left": [],
+            "cube_top": [],
+            "cube_bottom": []
+        },
+        "mask": {
+            "top_view": "",
+            "cube_front": "",
+            "cube_right": "",
+            "cube_back": "",
+            "cube_left": "",
+            "cube_top": "",
+            "cube_bottom": ""
+        }
+    }
+}
